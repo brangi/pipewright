@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Workflow execution engine.
 
 Takes a Workflow definition and runs it step by step using the Claude Agent SDK.
@@ -50,46 +53,54 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
         step_model = step.model or default_model
         allowed_tools = step.tools + memory_tools
+        max_turns = step.max_turns if step.max_turns is not None else config.get("max_turns", 15)
 
         options = ClaudeAgentOptions(
             system_prompt=f"You are a specialist agent executing step '{step.name}' "
                           f"of the '{workflow.name}' workflow. Be focused and thorough.",
             allowed_tools=allowed_tools,
             model=step_model,
-            max_turns=15,
+            max_turns=max_turns,
             max_budget_usd=max_budget,
             hooks=hooks,
             mcp_servers={"memory": memory_server},
             permission_mode="bypassPermissions",
         )
 
-        # Collect agent output
+        # Retry loop — user can retry failed steps
         step_output = []
-        try:
-            async for message in query(prompt=prompt, options=options):
-                if isinstance(message, AssistantMessage):
-                    for block in message.content:
-                        if hasattr(block, "text") and block.text:
-                            step_output.append(block.text)
-                elif isinstance(message, ResultMessage):
-                    cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "n/a"
-                    display.info(f"Step cost: {cost} | Turns: {message.num_turns}")
-        except Exception as e:
-            display.error(f"Step '{step.name}' failed: {e}")
-            response = display.checkpoint_prompt("Retry this step, skip it, or abort?")
-            if response.lower() in ("abort", "n", "no"):
-                display.error("Workflow aborted.")
-                return
-            elif response.lower() == "skip":
-                continue
-            # Default: continue to next step
+        while True:
+            step_output = []  # clear on each attempt
+            try:
+                async for message in query(prompt=prompt, options=options):
+                    if isinstance(message, AssistantMessage):
+                        for block in message.content:
+                            if hasattr(block, "text") and block.text:
+                                step_output.append(block.text)
+                    elif isinstance(message, ResultMessage):
+                        cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "n/a"
+                        display.info(f"Step cost: {cost} | Turns: {message.num_turns}")
+            except Exception as e:
+                display.error(f"Step '{step.name}' failed: {e}")
+                response = display.checkpoint_prompt("Retry this step, skip it, or abort?")
+                if response.lower() in ("abort", "n", "no"):
+                    display.error("Workflow aborted.")
+                    return
+                elif response.lower() in ("retry", "r", "y", "yes"):
+                    display.info("Retrying step...")
+                    continue  # re-run this step
+                else:
+                    # Default: skip this step
+                    break
+            break  # success: exit retry loop
 
         # Show results
         result_text = "\n".join(step_output) if step_output else "(no output)"
-        display.result_box(f"Step: {step.name}", result_text[:2000])  # Truncate long output
+        display.result_box(f"Step: {step.name}", result_text[:2000])  # Truncate for display
 
         # Add to context for next step
-        context += f"\n--- Result from '{step.name}' ---\n{result_text[:1000]}\n"
+        ctx_limit = step.context_limit if step.context_limit is not None else config.get("context_limit", 1000)
+        context += f"\n--- Result from '{step.name}' ---\n{result_text[:ctx_limit]}\n"
 
         # Checkpoint: pause for user if configured
         if step.checkpoint:
