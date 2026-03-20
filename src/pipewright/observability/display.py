@@ -1,0 +1,82 @@
+"""Terminal display formatting for real-time observability."""
+from datetime import datetime
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+RED = "\033[31m"
+MAGENTA = "\033[35m"
+BLUE = "\033[34m"
+
+
+def _ts():
+    return datetime.now().strftime("%H:%M:%S")
+
+
+def step_banner(step_name: str, step_num: int, total: int):
+    line = "=" * 50
+    print(f"\n{BOLD}{CYAN}{line}{RESET}")
+    print(f"{BOLD}{CYAN}  [{step_num}/{total}] {step_name}{RESET}")
+    print(f"{BOLD}{CYAN}{line}{RESET}\n")
+
+
+def agent_start(agent_name: str):
+    print(f"  {MAGENTA}{_ts()} [AGENT]{RESET} {BOLD}{agent_name}{RESET} activated")
+
+
+def agent_done(agent_name: str):
+    print(f"  {MAGENTA}{_ts()} [AGENT]{RESET} {agent_name} complete")
+
+
+def tool_call(tool_name: str, summary: str = ""):
+    print(f"    {DIM}{_ts()} [TOOL]{RESET} {YELLOW}{tool_name}{RESET} {DIM}{summary}{RESET}")
+
+
+def tool_result(tool_name: str):
+    print(f"    {DIM}{_ts()} [DONE]{RESET} {tool_name}")
+
+
+def info(message: str):
+    print(f"  {BLUE}{_ts()} [INFO]{RESET} {message}")
+
+
+def success(message: str):
+    print(f"  {GREEN}{_ts()} [ OK ]{RESET} {message}")
+
+
+def error(message: str):
+    print(f"  {RED}{_ts()} [ERR ]{RESET} {message}")
+
+
+def checkpoint_prompt(message: str) -> str:
+    """Pause at a checkpoint and ask user to continue."""
+    print(f"\n{BOLD}{GREEN}  >> {message}{RESET}")
+    try:
+        return input(f"  {DIM}Continue? [y/n/feedback]: {RESET}").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return "n"
+
+
+def welcome():
+    print(f"""
+{BOLD}{CYAN}
+  ╔══════════════════════════════════════════════╗
+  ║          Pipewright v0.1.0                   ║
+  ║   The playwright of dev pipelines            ║
+  ╚══════════════════════════════════════════════╝
+{RESET}""")
+
+
+def result_box(title: str, content: str):
+    """Display results in a bordered box."""
+    lines = content.strip().split("\n")
+    max_len = max((len(line) for line in lines), default=40)
+    border = "─" * (max_len + 4)
+    print(f"\n  {BOLD}┌─ {title} {border[len(title)+3:]}{RESET}")
+    for line in lines:
+        print(f"  {DIM}│{RESET}  {line}")
+    print(f"  {BOLD}└{border}─┘{RESET}\n")
