@@ -35,6 +35,22 @@ class Step:
     context_limit: int | None = None
 
 
+@dataclass
+class Chain:
+    """A chain links one workflow to another.
+
+    After a workflow completes, each chain triggers a follow-up workflow.
+
+    Args:
+        workflow: Name of the workflow to run next (must be a discovered plugin).
+        mode: How to pass data to the chained workflow.
+              "target" — last step's full output becomes the new target.
+              "context" — full accumulated context becomes the new target.
+    """
+    workflow: str
+    mode: str = "target"
+
+
 class Workflow:
     """Base class for workflow plugins.
 
@@ -53,3 +69,4 @@ class Workflow:
     name: str = ""
     description: str = ""
     steps: list[Step] = []
+    chains: list[Chain] = []

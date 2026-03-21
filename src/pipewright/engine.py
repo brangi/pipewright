@@ -8,22 +8,28 @@ Each Step becomes an agent call. Results flow from step to step via context.
 Checkpoints pause for user approval.
 """
 import asyncio
+from pathlib import Path
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage
 from pipewright.workflow import Workflow, Step
+from pipewright.plugins.loader import discover_plugins
 from pipewright.observability import display
 from pipewright.observability.hooks import create_hooks
 from pipewright.memory.mcp_server import create_memory_server
 from pipewright import config as cfg
 
 
-async def run_workflow(workflow: Workflow, target: str, model_override: str | None = None):
+async def run_workflow(workflow: Workflow, target: str, model_override: str | None = None,
+                       plugins_dir: Path | None = None):
     """Execute a workflow against a target.
 
     Args:
         workflow: The Workflow instance to run
         target: File or directory the user wants to process
         model_override: Optional model override for all steps
+        plugins_dir: Directory to discover plugins from (default: cwd/plugins)
     """
+    if plugins_dir is None:
+        plugins_dir = Path.cwd() / "plugins"
     config = cfg.load()
     default_model = model_override or config.get("model", "haiku")
     max_budget = config.get("max_budget_usd", 0.50)
@@ -44,6 +50,8 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         "mcp__memory__search_memory",
         "mcp__memory__save_preference",
     ]
+
+    result_text = "(no output)"  # last step's output for chain target mode
 
     for i, step in enumerate(workflow.steps, 1):
         display.step_banner(step.name, i, len(workflow.steps))
@@ -117,7 +125,23 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
     display.success(f"Workflow '{workflow.name}' complete!")
 
+    # Execute chained workflows
+    for chain in workflow.chains:
+        workflows = discover_plugins(plugins_dir)
+        if chain.workflow not in workflows:
+            display.error(f"Chained workflow '{chain.workflow}' not found, skipping")
+            continue
 
-def run(workflow: Workflow, target: str, model_override: str | None = None):
+        if chain.mode == "context":
+            new_target = context
+        else:
+            new_target = result_text
+
+        display.info(f"Chaining → {chain.workflow}")
+        await run_workflow(workflows[chain.workflow], new_target, model_override, plugins_dir)
+
+
+def run(workflow: Workflow, target: str, model_override: str | None = None,
+        plugins_dir: Path | None = None):
     """Sync wrapper for run_workflow."""
-    asyncio.run(run_workflow(workflow, target, model_override))
+    asyncio.run(run_workflow(workflow, target, model_override, plugins_dir))

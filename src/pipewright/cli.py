@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Pipewright CLI — the user-facing entry point.
 
 Uses Click to define commands. After `pip install pipewright`,
@@ -50,7 +53,7 @@ def run(workflow: str, target: str, model: str | None):
         click.echo(f"Available: {', '.join(workflows.keys()) or '(none found)'}")
         raise SystemExit(1)
 
-    engine.run(workflows[workflow], target, model_override=model)
+    engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir)
 
 
 @main.command("list")
