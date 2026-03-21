@@ -28,14 +28,15 @@ def main():
 @click.argument("workflow")
 @click.argument("target", required=False, default=".")
 @click.option("--model", "-m", default=None, help="Override the model for this run")
-def run(workflow: str, target: str, model: str | None):
+@click.option("--yes", "-y", is_flag=True, default=False, help="Auto-approve checkpoints")
+def run(workflow: str, target: str, model: str | None, yes: bool):
     """Run a workflow on a target file or directory.
 
     Examples:
 
         pipewright run test-gen ./src/auth.py
 
-        pipewright run pr-auto
+        pipewright run test-gen ./src/auth.py -y
 
         pipewright run issue-solve #42
     """
@@ -53,7 +54,8 @@ def run(workflow: str, target: str, model: str | None):
         click.echo(f"Available: {', '.join(workflows.keys()) or '(none found)'}")
         raise SystemExit(1)
 
-    engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir)
+    engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir,
+               auto_approve=yes)
 
 
 @main.command("list")

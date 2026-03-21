@@ -19,7 +19,7 @@ from pipewright import config as cfg
 
 
 async def run_workflow(workflow: Workflow, target: str, model_override: str | None = None,
-                       plugins_dir: Path | None = None):
+                       plugins_dir: Path | None = None, auto_approve: bool = False):
     """Execute a workflow against a target.
 
     Args:
@@ -27,6 +27,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         target: File or directory the user wants to process
         model_override: Optional model override for all steps
         plugins_dir: Directory to discover plugins from (default: cwd/plugins)
+        auto_approve: Skip checkpoint prompts (for CI/non-interactive use)
     """
     if plugins_dir is None:
         plugins_dir = Path.cwd() / "plugins"
@@ -111,7 +112,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         context += f"\n--- Result from '{step.name}' ---\n{result_text[:ctx_limit]}\n"
 
         # Checkpoint: pause for user if configured
-        if step.checkpoint:
+        if step.checkpoint and not auto_approve:
             response = display.checkpoint_prompt(
                 f"Step '{step.name}' complete. Review above and continue?"
             )
@@ -122,6 +123,8 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
                 # User gave feedback — append to context for next step
                 context += f"\nUser feedback: {response}\n"
                 display.info(f"Feedback noted: {response}")
+        elif step.checkpoint and auto_approve:
+            display.info(f"Checkpoint '{step.name}' auto-approved")
 
     display.success(f"Workflow '{workflow.name}' complete!")
 
@@ -138,10 +141,11 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             new_target = result_text
 
         display.info(f"Chaining → {chain.workflow}")
-        await run_workflow(workflows[chain.workflow], new_target, model_override, plugins_dir)
+        await run_workflow(workflows[chain.workflow], new_target, model_override, plugins_dir,
+                           auto_approve)
 
 
 def run(workflow: Workflow, target: str, model_override: str | None = None,
-        plugins_dir: Path | None = None):
+        plugins_dir: Path | None = None, auto_approve: bool = False):
     """Sync wrapper for run_workflow."""
-    asyncio.run(run_workflow(workflow, target, model_override, plugins_dir))
+    asyncio.run(run_workflow(workflow, target, model_override, plugins_dir, auto_approve))
