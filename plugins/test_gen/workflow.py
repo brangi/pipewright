@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """test-gen: Generate meaningful test suites for source files.
 
 Usage: pipewright run test-gen ./src/auth.py

@@ -15,8 +15,8 @@ venv/
 .vscode/
 *.swp
 
-# Pipewright runtime
-memory/
+# Pipewright runtime data (not source code)
+/memory/
 workspaces/
 
 # OS

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Configuration management for Pipewright.
 
 Settings are stored in ~/.pipewright/config.json.

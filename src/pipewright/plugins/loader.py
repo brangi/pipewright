@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Plugin discovery and loading.
 
 Finds workflow.py files in the plugins/ directory and loads them.
