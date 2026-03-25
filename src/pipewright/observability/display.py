@@ -3,6 +3,7 @@
 
 """Terminal display formatting for real-time observability."""
 from datetime import datetime
+from pipewright import __version__
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -62,6 +63,29 @@ def checkpoint_prompt(message: str) -> str:
     except (EOFError, KeyboardInterrupt):
         print()
         return "n"
+
+
+def workflow_start(workflow_name: str, description: str):
+    """Display workflow start banner with version and workflow info."""
+    # Build the header box
+    title = f"PIPEWRIGHT v{__version__}"
+    workflow_line = f"Workflow: {workflow_name}"
+
+    # Calculate box width (minimum 40, max of title or workflow line + padding)
+    width = max(40, len(title) + 4, len(workflow_line) + 4)
+
+    # Create padded lines
+    title_padded = title.center(width - 2)
+    workflow_padded = workflow_line.ljust(width - 2)
+
+    # Draw box
+    top = "╭" + "─" * width + "╮"
+    bottom = "╰" + "─" * width + "╯"
+
+    print(f"\n{BOLD}{CYAN}{top}{RESET}")
+    print(f"{BOLD}{CYAN}│ {title_padded} │{RESET}")
+    print(f"{BOLD}{CYAN}│ {workflow_padded} │{RESET}")
+    print(f"{BOLD}{CYAN}{bottom}{RESET}\n")
 
 
 def welcome():

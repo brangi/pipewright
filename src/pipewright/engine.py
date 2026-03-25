@@ -35,8 +35,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
     default_model = model_override or config.get("model", "haiku")
     max_budget = config.get("max_budget_usd", 0.50)
 
-    display.welcome()
-    display.info(f"Workflow: {workflow.name} — {workflow.description}")
+    display.workflow_start(workflow.name, workflow.description)
     display.info(f"Target: {target}")
     display.info(f"Model: {default_model} | Budget cap: ${max_budget}")
 
@@ -44,6 +43,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
     project_root = plugins_dir.parent if plugins_dir else Path.cwd()
     env_context = f"Project root: {project_root}\n"
 
+    # Check for common venv locations
     venv_python = None
     for venv_name in [".venv", "venv"]:
         candidate = project_root / venv_name / "bin" / "python3"
