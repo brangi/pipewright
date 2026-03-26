@@ -19,5 +19,20 @@ venv/
 /memory/
 workspaces/
 
+# JavaScript / TypeScript
+node_modules/
+package-lock.json
+
+# Rust
+target/
+Cargo.lock
+
+# Java
+*.class
+
+# Go (root-level stray)
+/go.mod
+/go.sum
+
 # OS
 .DS_Store
