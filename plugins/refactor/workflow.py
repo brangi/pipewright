@@ -18,6 +18,7 @@ class RefactorWorkflow(Workflow):
             name="analyze-code",
             prompt=(
                 "Analyze the code at {target} to understand its structure and purpose. "
+                "Detect the programming language and apply language-specific best practices. "
                 "Read the target file(s) and surrounding codebase. Identify:\n"
                 "- Current code structure and patterns\n"
                 "- Dependencies and imports\n"
@@ -38,7 +39,7 @@ class RefactorWorkflow(Workflow):
                 "- READABILITY: naming, structure, comments, complexity reduction\n"
                 "- PERFORMANCE: algorithm improvements, unnecessary allocations, caching\n"
                 "- MAINTAINABILITY: separation of concerns, DRY violations, coupling\n"
-                "- SAFETY: error handling, type hints, edge cases\n"
+                "- SAFETY: error handling, type annotations/safety, edge cases\n"
                 "For each improvement, explain the current problem and the proposed fix. "
                 "Prioritize by impact.\n\n"
                 "Context from prior steps:\n{context}"

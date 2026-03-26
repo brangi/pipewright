@@ -34,6 +34,7 @@ class CodeReviewWorkflow(Workflow):
             name="analyze-quality",
             prompt=(
                 "Perform a deep code quality analysis on the changes gathered from {target}. "
+                "Detect the programming language and apply language-specific best practices. "
                 "Search memory for any project-specific coding standards or past review patterns first. "
                 "Identify:\n"
                 "- BUGS: Logic errors, null/undefined access, off-by-one errors, race conditions\n"
