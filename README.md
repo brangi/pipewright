@@ -74,6 +74,30 @@ Auto-approve checkpoints for CI/scripted use:
 pipewright run test-gen ./src/auth.py -y
 ```
 
+## Supported Languages
+
+Pipewright works with any programming language. The AI agents read, analyze,
+and generate code using standard dev tools. These languages have dedicated
+examples and test framework detection:
+
+| Language   | Extensions     | Default Test Framework | Example                    |
+|------------|----------------|------------------------|----------------------------|
+| Python     | .py            | pytest                 | `example/python/utils.py`  |
+| JavaScript | .js            | Jest                   | `example/js/utils.js`      |
+| TypeScript | .ts, .tsx      | Vitest                 | `example/ts/utils.ts`      |
+| Java       | .java          | JUnit 5                | `example/java/Utils.java`  |
+| Rust       | .rs            | cargo test             | `example/rust/src/lib.rs`  |
+| Go         | .go            | go test                | `example/go/utils.go`      |
+| Ruby       | .rb            | RSpec                  | `example/ruby/utils.rb`    |
+
+Generate tests for any language:
+
+```bash
+pipewright run test-gen ./src/utils.js       # JavaScript -> Jest
+pipewright run test-gen ./src/lib.rs         # Rust -> cargo test
+pipewright run test-gen ./cmd/server.go      # Go -> go test
+```
+
 ## Create a Plugin
 
 Scaffold a new plugin:
@@ -154,6 +178,16 @@ pipewright config get model
 
 Settings stored in `~/.pipewright/config.json`. API keys come from
 environment variables or `.env` (never stored in config).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding guidelines,
+and how to add plugins. For the full plugin authoring reference, see
+[docs/PLUGIN_GUIDE.md](docs/PLUGIN_GUIDE.md).
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and milestones.
 
 ## License
 
