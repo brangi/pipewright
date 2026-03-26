@@ -5,7 +5,7 @@
 
 import math
 import pytest
-from example.utils import calculate_average, fizzbuzz, reverse_words
+from example.python.utils import calculate_average, fizzbuzz, reverse_words
 
 
 class TestCalculateAverage:

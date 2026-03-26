@@ -1,0 +1,13 @@
+{
+  "name": "pipewright-ts-example",
+  "version": "1.0.0",
+  "description": "TypeScript example for pipewright test-gen demos",
+  "main": "utils.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}

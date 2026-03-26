@@ -1,0 +1,6 @@
+[package]
+name = "pipewright-rust-example"
+version = "0.1.0"
+edition = "2021"
+description = "Rust example for pipewright test-gen demos"
+license = "MIT"
