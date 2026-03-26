@@ -8,6 +8,7 @@ Each Step becomes an agent call. Results flow from step to step via context.
 Checkpoints pause for user approval.
 """
 import asyncio
+import os
 from pathlib import Path
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage
 from pipewright.workflow import Workflow, Step
@@ -34,6 +35,11 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
     config = cfg.load()
     default_model = model_override or config.get("model", "haiku")
     max_budget = config.get("max_budget_usd", 0.50)
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        display.error("ANTHROPIC_API_KEY not set. Add it to .env or export it.")
+        display.info("Hint: Create a .env file with: ANTHROPIC_API_KEY=sk-...")
+        return
 
     display.workflow_start(workflow.name, workflow.description)
     display.info(f"Target: {target}")

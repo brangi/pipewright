@@ -9,6 +9,7 @@ Each plugin must define a subclass of Workflow.
 import importlib.util
 from pathlib import Path
 from pipewright.workflow import Workflow
+from pipewright.observability import display
 
 
 def discover_plugins(plugins_dir: Path) -> dict[str, Workflow]:
@@ -36,7 +37,11 @@ def discover_plugins(plugins_dir: Path) -> dict[str, Workflow]:
             continue
 
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            display.error(f"Plugin '{plugin_dir.name}' failed to load: {e}")
+            continue
 
         # Find all Workflow subclasses in the module
         for attr_name in dir(module):

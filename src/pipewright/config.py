@@ -7,6 +7,7 @@ Settings are stored in ~/.pipewright/config.json.
 API keys come from environment variables (never stored in config).
 """
 import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -37,7 +38,11 @@ def load() -> dict:
         try:
             with open(CONFIG_FILE) as f:
                 saved = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except json.JSONDecodeError:
+            print(f"Warning: config file corrupted ({CONFIG_FILE}), using defaults.",
+                  file=sys.stderr)
+            saved = {}
+        except IOError:
             saved = {}
     else:
         saved = {}
