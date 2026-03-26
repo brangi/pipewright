@@ -1,0 +1,10 @@
+[package]
+name = "pipewright-rust-demo"
+version = "0.1.0"
+edition = "2021"
+description = "Rust CLI demo for pipewright multi-language showcase"
+license = "MIT"
+
+[[bin]]
+name = "textool"
+path = "src/main.rs"
