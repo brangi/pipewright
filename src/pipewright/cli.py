@@ -129,5 +129,117 @@ def memory_search(query: str):
         click.echo(f"  [{r['category']}] {r['key']}: {r['value']}")
 
 
+def _to_class_name(snake_name: str) -> str:
+    """Convert snake_case to PascalCase. e.g. 'my_plugin' -> 'MyPlugin'."""
+    return "".join(word.capitalize() for word in snake_name.split("_"))
+
+
+@main.command()
+@click.argument("name")
+def init(name: str):
+    """Scaffold a new plugin directory.
+
+    Creates a plugin with a minimal Workflow template and basic tests.
+
+    Example:
+
+        pipewright init my-plugin
+    """
+    import pathlib
+
+    dir_name = name.replace("-", "_")
+    plugins_dir = pathlib.Path.cwd() / "plugins"
+    plugin_dir = plugins_dir / dir_name
+
+    if plugin_dir.exists():
+        click.echo(f"Error: Plugin '{dir_name}' already exists at {plugin_dir}")
+        raise SystemExit(1)
+
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+
+    class_name = _to_class_name(dir_name)
+
+    (plugin_dir / "__init__.py").write_text(
+        "# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>\n"
+        "# SPDX-License-Identifier: MIT\n"
+    )
+
+    (plugin_dir / "workflow.py").write_text(
+        "# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>\n"
+        "# SPDX-License-Identifier: MIT\n"
+        "\n"
+        f'"""{name}: TODO -- describe your workflow.\n'
+        "\n"
+        f"Usage: pipewright run {name} <target>\n"
+        '"""\n'
+        "from pipewright.workflow import Workflow, Step\n"
+        "\n"
+        "\n"
+        f"class {class_name}Workflow(Workflow):\n"
+        f'    name = "{name}"\n'
+        f'    description = "TODO -- describe what this workflow does"\n'
+        "\n"
+        "    steps = [\n"
+        "        Step(\n"
+        '            name="analyze",\n'
+        "            prompt=(\n"
+        '                "Analyze the target at {target}. "\n'
+        '                "Identify key aspects relevant to this workflow.\\n\\n"\n'
+        '                "Context from prior steps:\\n{context}"\n'
+        "            ),\n"
+        '            tools=["Read", "Glob", "Grep"],\n'
+        "            checkpoint=False,\n"
+        '            model="haiku",\n'
+        "        ),\n"
+        "        Step(\n"
+        '            name="execute",\n'
+        "            prompt=(\n"
+        '                "Based on the analysis, perform the main action for {target}.\\n\\n"\n'
+        '                "Context from prior steps:\\n{context}"\n'
+        "            ),\n"
+        '            tools=["Read", "Write", "Glob"],\n'
+        "            checkpoint=True,\n"
+        '            model="sonnet",\n'
+        "        ),\n"
+        "    ]\n"
+    )
+
+    tests_dir = pathlib.Path.cwd() / "tests"
+    tests_dir.mkdir(exist_ok=True)
+    (tests_dir / f"test_{dir_name}.py").write_text(
+        "# Copyright (c) 2026 Gibran Rodriguez <brangi000@gmail.com>\n"
+        "# SPDX-License-Identifier: MIT\n"
+        "\n"
+        f'"""Tests for the {name} workflow plugin."""\n'
+        "from pathlib import Path\n"
+        "from pipewright.plugins.loader import discover_plugins\n"
+        "from pipewright.workflow import Workflow\n"
+        "\n"
+        "\n"
+        f"def test_{dir_name}_discovered():\n"
+        "    workflows = discover_plugins(Path(\"plugins\"))\n"
+        f'    assert "{name}" in workflows\n'
+        "\n"
+        "\n"
+        f"def test_{dir_name}_is_workflow_subclass():\n"
+        "    workflows = discover_plugins(Path(\"plugins\"))\n"
+        f'    assert isinstance(workflows["{name}"], Workflow)\n'
+        "\n"
+        "\n"
+        f"def test_{dir_name}_prompts_contain_template_vars():\n"
+        "    workflows = discover_plugins(Path(\"plugins\"))\n"
+        f'    wf = workflows["{name}"]\n'
+        "    for step in wf.steps:\n"
+        "        assert \"{target}\" in step.prompt\n"
+        "        assert \"{context}\" in step.prompt\n"
+    )
+
+    click.echo(f"Created plugin '{name}':")
+    click.echo(f"  {plugin_dir / '__init__.py'}")
+    click.echo(f"  {plugin_dir / 'workflow.py'}")
+    click.echo(f"  {tests_dir / f'test_{dir_name}.py'}")
+    click.echo(f"\nRun: pipewright list")
+
+
 if __name__ == "__main__":
     main()
