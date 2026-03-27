@@ -29,6 +29,8 @@ Cargo.lock
 
 # Java
 *.class
+*.jar
+demo/java-utils/lib/
 
 # Go (root-level stray)
 /go.mod

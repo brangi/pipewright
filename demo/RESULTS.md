@@ -1,10 +1,10 @@
 # Pipewright Demo Results
 
-Results from running `pipewright run test-gen` on each language example.
+Results from running pipewright workflows on example files and standalone demo projects.
 All runs used `--yes` (auto-approve) with default Haiku/Sonnet model tiering.
 
-**Date**: March 26, 2026
-**Pipewright version**: v0.2.0 (commit `eb4daaa`)
+**Date**: March 26-27, 2026
+**Pipewright version**: v0.2.0 (commit `eb4daaa`+)
 
 ## Summary
 
@@ -144,6 +144,174 @@ implementation (decimal precision, input validation, whitespace handling).
 5. **Test quality is high**: Generated tests cover happy paths, edge cases, error
    handling, and boundary conditions. The Ruby failures were real bugs, not test bugs.
 
+---
+
+## Standalone Demo Projects
+
+Four standalone projects in `demo/` showcase pipewright as a **multi-workflow** tool.
+Each project was tested with `test-gen`, and select projects were also run through
+`code-review`, `docs-gen`, and `refactor` workflows.
+
+### Demo Summary
+
+| Project | Workflow | Tests | Pass Rate | Cost | Notes |
+|---------|----------|-------|-----------|------|-------|
+| Express API | test-gen | 94 | 100% (94/94) | $0.16 | Jest, 4 functions |
+| Rust CLI | test-gen | 56 | 100% (56/56) | $0.14 | cargo test (51 unit + 5 doc) |
+| Go Server | test-gen | 91 | 100% (91/91) | $0.21 | go test, table-driven + benchmarks |
+| Java Utils | test-gen | 56 | 100% (56/56) | $0.21 | JUnit 4, 4 functions |
+| Express API | code-review | — | — | $0.33 | Found 2 bugs, 2 warnings |
+| Rust CLI | docs-gen | — | — | $0.31 | Enhanced all 4 function doc comments |
+| Go Server | refactor | — | — | $0.43 | 2 improvements, tests still pass |
+
+**Total: 297 tests generated, 7 workflow runs, $1.79 API cost**
+
+### Express API — test-gen (94/94 passing)
+
+```
+pipewright run test-gen demo/express-api/src/utils.js -y
+```
+
+The agent detected `package.json` with Jest, analyzed 4 exported functions
+(`isValidEmail`, `slugify`, `paginate`, `parseDuration`), and generated 94 tests
+covering happy paths, edge cases, error handling, and data integrity. Tests validate
+type coercion edge cases (null, undefined, objects), regex behavior in `parseDuration`,
+and array immutability in `paginate`.
+
+- **Generated file**: `demo/express-api/src/utils.test.js`
+- **Self-corrected**: 0 — all tests passed on first run
+- **Cost**: $0.16
+
+### Express API — code-review (2 bugs found)
+
+```
+pipewright run code-review demo/express-api/ -y
+```
+
+The agent performed a full code review of the Express API project and found:
+
+- **BUG**: `paginate()` accepts negative page/perPage via `parseInt("-1") || 1` — the
+  truthy `-1` bypasses the default, causing crashes with negative slice indices
+- **BUG**: ID generation uses `items.length + 1`, creating collision risk after deletions
+- **WARNING**: `slugify()` silently strips all Unicode characters (accented, CJK, emoji)
+- **WARNING**: `parseDuration()` is exported but never used in any route handler
+
+- **Cost**: $0.33
+
+### Rust CLI — test-gen (56/56 passing)
+
+```
+pipewright run test-gen demo/rust-cli/src/lib.rs -y
+```
+
+The agent detected `Cargo.toml` (Rust 2021 edition), analyzed 4 public functions
+(`word_frequency`, `truncate`, `title_case`, `is_valid_identifier`), and generated
+51 inline unit tests in a `#[cfg(test)]` module following Rust conventions. The 5
+doc tests in the enhanced documentation also pass via `cargo test`.
+
+- **Generated**: inline `#[cfg(test)]` module in `demo/rust-cli/src/lib.rs`
+- **Self-corrected**: 1 — `word_frequency` hyphen-splitting assertion fixed
+- **Cost**: $0.14
+
+### Rust CLI — docs-gen (all functions documented)
+
+```
+pipewright run docs-gen demo/rust-cli/src/lib.rs -y
+```
+
+The agent enhanced documentation for all 4 public functions with:
+- Module-level `//!` doc with function table and quick-start examples
+- Per-function `///` docs with Arguments, Returns, and Examples sections
+- Runnable `cargo test` doc examples (5 doc tests, all passing)
+
+- **Modified**: `demo/rust-cli/src/lib.rs` — added ~150 lines of documentation
+- **Cost**: $0.31
+
+### Go Server — test-gen (91/91 passing)
+
+```
+pipewright run test-gen demo/go-server/handlers.go -y
+```
+
+The agent detected `go.mod` and generated idiomatic table-driven tests for 5 functions
+(`HandleHealth`, `CountWords`, `IsPalindrome`, `CamelToSnake`, `FormatBytes`). Tests
+use `httptest` for the HTTP handler and include boundary-value analysis for `FormatBytes`
+(testing exact KB/MB/GB thresholds). Also generated 4 benchmarks.
+
+- **Generated file**: `demo/go-server/handlers_test.go`
+- **Coverage**: 74.3% statement coverage
+- **Self-corrected**: 0 — all tests passed on first run
+- **Cost**: $0.21
+
+### Go Server — refactor (2 improvements applied)
+
+```
+pipewright run refactor demo/go-server/ -y
+```
+
+The agent analyzed the Go codebase and applied two targeted improvements:
+
+1. **IsPalindrome**: Changed `var cleaned []rune` to `make([]rune, 0, len(s))` —
+   pre-allocates the slice to avoid repeated grow-copy cycles
+2. **FormatBytes**: Added explicit `int64` type annotations to `KB`, `MB`, `GB` constants —
+   prevents implicit type conversion issues with the `int64` parameter
+
+All 91 tests still pass after refactoring.
+
+- **Modified**: `demo/go-server/handlers.go` (2 hunks)
+- **Cost**: $0.43 (highest — refactor requires analysis + safe modification)
+
+### Java Utils — test-gen (56/56 passing)
+
+```
+pipewright run test-gen demo/java-utils/src/Utils.java -y
+```
+
+The agent analyzed 4 utility methods (`isBalanced`, `mostFrequent`, `toRoman`, `flatten`)
+and generated 56 JUnit 4 tests. Tests cover deeply nested structures for `flatten`,
+boundary values (1 and 3999) for `toRoman`, tie-breaking behavior for `mostFrequent`,
+and complex bracket patterns for `isBalanced`. The agent downloaded JUnit 4.13.2 and
+Hamcrest jars automatically.
+
+- **Generated file**: `demo/java-utils/src/UtilsTest.java`
+- **Auto-installed**: JUnit 4.13.2 + Hamcrest Core 1.3
+- **Self-corrected**: 0 — all tests passed on first run
+- **Cost**: $0.21
+
+### Key Observations (Demo Projects)
+
+1. **Multi-workflow proof**: Pipewright isn't just a test generator — code-review found
+   real bugs, docs-gen wrote production-quality documentation, and refactor made safe,
+   verified improvements.
+
+2. **Workflow costs vary by complexity**: test-gen ($0.14-$0.21), code-review ($0.33),
+   docs-gen ($0.31), refactor ($0.43). More analytical workflows cost more but deliver
+   proportional value.
+
+3. **Zero manual intervention**: All 7 runs completed without human input (`--yes` mode).
+   The agent handled dependency installation, framework detection, and self-correction
+   autonomously.
+
+4. **Refactor is conservative**: The refactor workflow made only 2 changes despite
+   analyzing the entire codebase — it correctly identified low-risk, high-value
+   improvements rather than rewriting working code.
+
+5. **Code review finds real bugs**: The negative page parameter bug in `paginate()` is
+   a genuine vulnerability that could crash production API endpoints.
+
+---
+
+## Combined Totals
+
+| Category | Count |
+|----------|-------|
+| Total test-gen runs | 11 (7 example + 4 demo) |
+| Total tests generated | 647 |
+| Total workflow runs | 14 (11 test-gen + 1 code-review + 1 docs-gen + 1 refactor) |
+| Total API cost | $2.79 |
+| Languages covered | 7 (Python, JS, TS, Rust, Go, Java, Ruby) |
+| Workflows demonstrated | 4 (test-gen, code-review, docs-gen, refactor) |
+
 ## Reproducing These Results
 
 ```bash
@@ -157,6 +325,12 @@ echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
 pipewright run test-gen example/python/utils.py -y
 pipewright run test-gen example/js/utils.js -y
 pipewright run test-gen example/rust/src/lib.rs -y
+
+# Run on demo projects (multi-workflow)
+pipewright run test-gen demo/express-api/src/utils.js -y
+pipewright run code-review demo/express-api/ -y
+pipewright run docs-gen demo/rust-cli/src/lib.rs -y
+pipewright run refactor demo/go-server/ -y
 ```
 
 Costs may vary slightly depending on model pricing and response length.

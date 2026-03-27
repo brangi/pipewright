@@ -36,7 +36,7 @@ func CountWords(text string) int {
 
 // IsPalindrome checks if a string is a palindrome (ignoring case and non-alpha chars).
 func IsPalindrome(s string) bool {
-	var cleaned []rune
+	cleaned := make([]rune, 0, len(s))
 	for _, r := range strings.ToLower(s) {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			cleaned = append(cleaned, r)
@@ -69,9 +69,9 @@ func CamelToSnake(s string) string {
 // FormatBytes converts bytes to a human-readable string (KB, MB, GB).
 func FormatBytes(bytes int64) string {
 	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
+		KB int64 = 1024
+		MB int64 = KB * 1024
+		GB int64 = MB * 1024
 	)
 	switch {
 	case bytes >= GB:
