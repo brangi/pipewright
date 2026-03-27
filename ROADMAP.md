@@ -1,64 +1,46 @@
 # Pipewright Roadmap
 
-## v0.1.0 (current)
+## v0.1.0 (shipped March 19, 2026)
 
-What ships today:
+- [x] CLI-first workflow engine with async step orchestration
+- [x] 6 built-in plugins: test-gen, issue-solve, code-review, debug, refactor, docs-gen
+- [x] Plugin scaffolding via `pipewright init`
+- [x] Workflow chaining, checkpoints, auto-approve (`-y`)
+- [x] Persistent memory via MCP tools
+- [x] Cost-optimized model tiering (haiku/sonnet/opus per step)
+- [x] Observability hooks and terminal display
+- [x] 155+ tests, MIT license enforcement
 
-- CLI-first workflow engine with async step orchestration
-- 6 built-in plugins: test-gen, issue-solve, code-review, debug, refactor, docs-gen
-- Plugin scaffolding via `pipewright init`
-- Workflow chaining, checkpoints, auto-approve (`-y`)
-- Persistent memory via MCP tools
-- Cost-optimized model tiering (haiku/sonnet/opus per step)
-- Observability hooks and terminal display
-- 194+ tests, MIT license enforcement
+## v0.2.0 (shipped March 26, 2026)
 
-## v0.2.0 -- Multi-Language Examples
+- [x] Multi-language examples: Python, JavaScript, TypeScript, Java, Rust, Go, Ruby
+- [x] Language-aware test-gen (auto-detects framework from file extension)
+- [x] Audited all plugin prompts for language neutrality
+- [x] 350 tests generated across 7 languages ($1.00 total)
+- [x] Standalone demo projects (Express API, Rust CLI, Go Server, Java Utils)
+- [x] Multi-workflow demos: test-gen, code-review, docs-gen, refactor on demo projects
+- [x] CONTRIBUTING.md, plugin authoring guide, usage guide
+- [x] GitHub Actions CI (pytest on Python 3.11/3.12/3.13)
+- [x] PyPI publishing via trusted publishing
+- [x] 199+ tests, comprehensive documentation
 
-Goal: Prove pipewright works on any language, not just Python.
+## v1.0.0 -- Production Ready
 
-- [ ] Reorganize `example/` directory by language
-- [ ] Add JavaScript example with package.json
-- [ ] Add TypeScript example with tsconfig
-- [ ] Add Java example
-- [ ] Add Rust example with Cargo.toml
-- [ ] Add Go example with go.mod
-- [ ] Add Ruby example
+Goal: Make pipewright stable, extensible, and provider-agnostic.
 
-## v0.3.0 -- Language-Aware Plugins
-
-Goal: test-gen (and other plugins) automatically detect the target language and use the correct framework.
-
-- [ ] Update test-gen prompts to detect language from file extension
-- [ ] Map languages to default test frameworks (Jest, JUnit, cargo test, go test, RSpec)
-- [ ] Audit refactor and code-review prompts for language neutrality
-- [ ] Add integration tests for multi-language examples
-- [ ] Manual verification: run test-gen on each language example
-
-## v0.4.0 -- Documentation and Community
-
-Goal: Make the project welcoming to contributors and easy to adopt.
-
-- [ ] CONTRIBUTING.md with development setup and plugin guide
-- [ ] Plugin authoring guide (docs/PLUGIN_GUIDE.md)
-- [ ] Update README with supported languages table
-- [ ] Usage guide for new users (docs/USAGE_GUIDE.md)
-- [ ] First GitHub release
-
-## v0.5.0 -- Live Demos and Showcase
-
-Goal: Demonstrate pipewright working on realistic projects across languages.
-
-- [ ] Create standalone demo projects (Express API, Rust CLI, Go server, Java utils)
-- [ ] Run all 6 workflows on demo projects
-- [ ] Capture and publish annotated results with cost breakdowns
-- [ ] Link demos from README
+- [ ] Provider abstraction (OpenAI, Gemini, local models via Ollama)
+- [ ] Parallel step execution within workflows
+- [ ] Plugin registry / marketplace
+- [ ] CI/CD integration examples (GitHub Actions workflow plugin)
+- [ ] Streaming output to external tools (JSON, webhooks)
+- [ ] Configuration validation and schema
+- [ ] Comprehensive error recovery and retry strategies
+- [ ] Performance benchmarks and optimization
 
 ## Future
 
-- Provider abstraction (OpenAI, Gemini, local models)
-- Parallel step execution within workflows
-- Plugin marketplace / registry
-- CI/CD integration (GitHub Actions)
-- Web dashboard for workflow results
-- Streaming output to external tools
+- Web dashboard for workflow results and history
+- Team features (shared memory, workflow templates)
+- VS Code / IDE extension
+- Self-hosted plugin registry
+- Workflow composition (combine plugins into meta-workflows)
