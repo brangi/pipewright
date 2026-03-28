@@ -24,11 +24,21 @@
 - [x] PyPI publishing via trusted publishing
 - [x] 199+ tests, comprehensive documentation
 
+## v0.3.0 (shipped March 27, 2026)
+
+- [x] Multi-provider support: Anthropic (default), OpenAI, Ollama, Groq, OpenRouter
+- [x] Provider abstraction layer with registry pattern
+- [x] Full agent loop for OpenAI-compatible providers with tool calling
+- [x] Local tool implementations (Read, Write, Edit, Glob, Grep, Bash) for non-Claude providers
+- [x] Memory tools work across all providers (MCP for Claude, function-calling for others)
+- [x] CLI `--provider` / `-p` flag and `pipewright providers` command
+- [x] Model alias resolution per provider (haiku/sonnet/opus map to appropriate models)
+- [x] Optional `openai` dependency: `pip install pipewright[openai]`
+
 ## v1.0.0 -- Production Ready
 
-Goal: Make pipewright stable, extensible, and provider-agnostic.
+Goal: Make pipewright stable, extensible, and production-grade.
 
-- [ ] Provider abstraction (OpenAI, Gemini, local models via Ollama)
 - [ ] Parallel step execution within workflows
 - [ ] Plugin registry / marketplace
 - [ ] CI/CD integration examples (GitHub Actions workflow plugin)

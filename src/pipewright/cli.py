@@ -28,15 +28,17 @@ def main():
 @click.argument("workflow")
 @click.argument("target", required=False, default=".")
 @click.option("--model", "-m", default=None, help="Override the model for this run")
+@click.option("--provider", "-p", default=None,
+              help="LLM provider (anthropic, openai, ollama, groq, openrouter)")
 @click.option("--yes", "-y", is_flag=True, default=False, help="Auto-approve checkpoints")
-def run(workflow: str, target: str, model: str | None, yes: bool):
+def run(workflow: str, target: str, model: str | None, provider: str | None, yes: bool):
     """Run a workflow on a target file or directory.
 
     Examples:
 
         pipewright run test-gen ./src/auth.py
 
-        pipewright run test-gen ./src/auth.py -y
+        pipewright run test-gen ./src/auth.py -p groq -y
 
         pipewright run issue-solve #42
     """
@@ -55,7 +57,7 @@ def run(workflow: str, target: str, model: str | None, yes: bool):
         raise SystemExit(1)
 
     engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir,
-               auto_approve=yes)
+               auto_approve=yes, provider_override=provider)
 
 
 @main.command("list")
@@ -73,6 +75,19 @@ def list_workflows():
     click.echo("Available workflows:")
     for name, wf in workflows.items():
         click.echo(f"  {name:15s} {wf.description}")
+
+
+@main.command("providers")
+def list_providers():
+    """List available LLM providers."""
+    from pipewright.providers import available_providers
+    providers = available_providers()
+    if not providers:
+        click.echo("No providers available.")
+        return
+    click.echo("Available providers:")
+    for p in providers:
+        click.echo(f"  {p}")
 
 
 @main.group()
