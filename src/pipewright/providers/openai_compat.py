@@ -44,9 +44,9 @@ GROQ_ALIASES = {
 }
 
 OPENROUTER_ALIASES = {
-    "haiku": "deepseek/deepseek-chat-v3-0324",
-    "sonnet": "deepseek/deepseek-chat-v3-0324",
-    "opus": "deepseek/deepseek-chat-v3-0324",
+    "haiku": "openrouter/free",
+    "sonnet": "openrouter/free",
+    "opus": "openrouter/free",
 }
 
 
