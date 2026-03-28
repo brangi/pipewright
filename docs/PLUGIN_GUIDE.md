@@ -31,6 +31,8 @@ class MyPluginWorkflow(Workflow):
 ```
 
 The engine discovers your plugin automatically -- no registration needed.
+Plugins are **provider-agnostic** -- the same workflow runs on Anthropic,
+OpenAI, Groq, OpenRouter, and Ollama without any changes.
 
 ## Step Fields
 
@@ -67,6 +69,8 @@ Step(
 
 ## Available Tools
 
+These tools are available across all providers:
+
 | Tool | Description | Use For |
 |------|-------------|---------|
 | Read | Read file contents | Inspecting source code |
@@ -76,11 +80,16 @@ Step(
 | Grep | Search file contents | Finding patterns in code |
 | Bash | Run shell commands | Running tests, git operations |
 
+With the Anthropic provider, tools are provided by the Claude Agent SDK.
+With all other providers, pipewright runs identical tool implementations locally.
+Your plugin doesn't need to know which provider is being used.
+
 ## Model Tiering
 
-Use different models per step to optimize cost:
+Use model aliases to optimize cost. These aliases map to the appropriate model
+for whichever provider the user has configured:
 
-- **haiku** -- cheap and fast. Use for analysis, file discovery, pattern matching.
+- **haiku** -- cheapest and fastest. Use for analysis, file discovery, pattern matching.
 - **sonnet** -- balanced. Use for code generation, complex reasoning, reviews.
 - **opus** -- most capable. Use for critical decisions, complex refactoring.
 
@@ -92,6 +101,10 @@ steps = [
 ```
 
 If no model is specified, the user's configured default is used (default: haiku).
+
+**Always use aliases** (`haiku`, `sonnet`, `opus`) instead of provider-specific
+model names like `gpt-4o-mini` or `claude-haiku-4-5`. This keeps your plugin
+portable across all providers.
 
 ## Checkpoints
 
@@ -132,6 +145,17 @@ Chain modes:
 - `"target"` -- passes the last step's output as the target
 - `"context"` -- passes the full accumulated context as the target
 
+## Memory
+
+Every agent step has access to persistent memory tools automatically:
+- `save_memory` -- store learnings and observations
+- `search_memory` -- recall past context
+- `save_preference` -- remember user preferences
+
+With Anthropic, memory works via MCP. With all other providers, memory works
+via function calling. Your plugin doesn't need to handle either case -- it's
+automatic.
+
 ## Testing Your Plugin
 
 The project convention is one test file per plugin at `tests/test_<name>.py`.
@@ -151,3 +175,4 @@ See `tests/test_refactor.py` for a complete example.
 - Put checkpoints before any file writes
 - Search memory at the start of analysis steps for user preferences
 - Test against multiple file types if your plugin is language-agnostic
+- Always use model aliases, never provider-specific model names

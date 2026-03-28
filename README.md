@@ -1,12 +1,15 @@
 # Pipewright
 
-CLI-first, plugin-based AI dev workflow automation. Chain AI agents into
+CLI-first, model-agnostic, plugin-based AI dev workflow automation. Chain AI agents into
 multi-step pipelines where each step is focused, checkpointed, and cost-optimized.
+
+Works with **5 LLM providers** -- from free models to Claude Opus.
 
 ## Install
 
 ```bash
-pip install pipewright
+pip install pipewright                # Anthropic (default provider)
+pip install pipewright[openai]        # + OpenAI, Groq, OpenRouter, Ollama
 ```
 
 Or from source:
@@ -14,13 +17,18 @@ Or from source:
 ```bash
 git clone https://github.com/brangi/pipewright.git
 cd pipewright
-pip install -e ".[dev]"
+pip install -e ".[dev,openai]"
 ```
 
-Requires Python 3.11+ and an Anthropic API key:
+Requires Python 3.11+ and at least one provider API key:
 
 ```bash
-echo "ANTHROPIC_API_KEY=sk-..." > .env
+# Pick one (or more) -- add to .env in your project root:
+ANTHROPIC_API_KEY=sk-ant-...          # Anthropic (default)
+OPENAI_API_KEY=sk-proj-...            # OpenAI
+GROQ_API_KEY=gsk_...                  # Groq (free tier)
+OPENROUTER_API_KEY=sk-or-...          # OpenRouter (free models)
+# Ollama needs no key -- just have it running locally
 ```
 
 ## Usage
@@ -74,6 +82,58 @@ Auto-approve checkpoints for CI/scripted use:
 pipewright run test-gen ./src/auth.py -y
 ```
 
+## Providers
+
+Pipewright supports multiple LLM providers. Use the `--provider` / `-p` flag to
+switch providers, or set a default in config.
+
+```bash
+# Use any provider
+pipewright run test-gen ./src/auth.py                    # Anthropic (default)
+pipewright run test-gen ./src/auth.py -p openai          # OpenAI
+pipewright run test-gen ./src/auth.py -p groq            # Groq (free)
+pipewright run test-gen ./src/auth.py -p openrouter      # OpenRouter (free)
+pipewright run test-gen ./src/auth.py -p ollama          # Ollama (local, free)
+
+# List available providers
+pipewright providers
+
+# Set default provider
+pipewright config set provider groq
+```
+
+### Provider Comparison
+
+| Provider | Cost | Models | Setup |
+|----------|------|--------|-------|
+| **Anthropic** | Paid | Claude Haiku, Sonnet, Opus | `ANTHROPIC_API_KEY` |
+| **OpenAI** | Paid (~$0.003/run) | GPT-4o-mini, GPT-4o | `OPENAI_API_KEY` + `pip install pipewright[openai]` |
+| **Groq** | Free tier | Llama 4 Scout 17B | `GROQ_API_KEY` + `pip install pipewright[openai]` |
+| **OpenRouter** | Free models | Auto-selects best free model | `OPENROUTER_API_KEY` + `pip install pipewright[openai]` |
+| **Ollama** | Free (local) | Llama, Mistral, CodeLlama, etc. | `pip install pipewright[openai]` + Ollama running |
+
+### Model Aliases
+
+Plugins use model aliases (`haiku`, `sonnet`, `opus`) that map to the appropriate
+model for each provider:
+
+| Alias | Anthropic | OpenAI | Groq | OpenRouter | Ollama |
+|-------|-----------|--------|------|------------|--------|
+| haiku | claude-haiku-4-5 | gpt-4o-mini | llama-4-scout-17b | openrouter/free | llama3.2:3b |
+| sonnet | claude-sonnet-4-5 | gpt-4o | llama-4-scout-17b | openrouter/free | llama3.3:70b |
+| opus | claude-opus-4-6 | gpt-4o | llama-4-scout-17b | openrouter/free | llama3.3:70b |
+
+This means plugins are **fully provider-agnostic** -- the same workflow runs
+on any provider without changes.
+
+### How It Works
+
+- **Anthropic** uses the Claude Agent SDK natively with MCP memory tools and
+  SDK hooks. This is the most capable path.
+- **All other providers** use the OpenAI-compatible chat completions API with
+  pipewright's own agent loop. Tools (Read, Write, Edit, Glob, Grep, Bash) run
+  locally. Memory tools work via function calling instead of MCP.
+
 ## Supported Languages
 
 Pipewright works with any programming language. The AI agents read, analyze,
@@ -122,7 +182,8 @@ class MyPluginWorkflow(Workflow):
     ]
 ```
 
-Run `pipewright list` to verify it appears.
+Run `pipewright list` to verify it appears. Plugins work with all providers
+automatically -- no provider-specific code needed.
 
 ## Architecture
 
@@ -135,45 +196,55 @@ Plugin Loader ---- plugins/*/workflow.py
   v
 Engine (async orchestrator)
   |
-  +---> Step 1: Agent (Claude SDK) ---> context
-  +---> Step 2: Agent (Claude SDK) ---> context
-  +---> Step 3: Agent (Claude SDK) ---> context (checkpoint)
-  |
   v
-Result (with memory persistence via MCP)
+Provider Layer
+  ├── AnthropicProvider  (Claude Agent SDK + MCP memory)
+  └── OpenAICompatProvider (openai SDK + local tools)
+        ├── OpenAI      (gpt-4o-mini, gpt-4o)
+        ├── Groq        (Llama 4 Scout — free)
+        ├── OpenRouter   (free model router)
+        └── Ollama       (local models — free)
 ```
 
-Each step runs a Claude agent with a focused prompt. Steps chain via context
-accumulation. Checkpoints pause for human review. Model tiering (haiku for
-cheap steps, sonnet for complex) keeps costs low.
+Plugins define steps with prompt templates and tool lists. The engine resolves
+the provider, maps model aliases, and executes each step. Context chains from
+step to step. Checkpoints pause for human review.
 
 ## Project Structure
 
 ```
 src/pipewright/
-  cli.py            CLI entry point (Click)
-  engine.py         Async orchestrator
-  workflow.py       Step, Chain, Workflow dataclasses
-  config.py         JSON config (~/.pipewright/config.json)
-  plugins/loader.py Plugin discovery
-  memory/           Persistent memory (JSON + MCP server)
-  observability/    Terminal display and SDK hooks
+  cli.py              CLI entry point (Click)
+  engine.py           Async orchestrator
+  workflow.py         Step, Chain, Workflow dataclasses
+  config.py           JSON config (~/.pipewright/config.json)
+  plugins/loader.py   Plugin discovery
+  providers/          Provider abstraction layer
+    base.py           Provider ABC
+    registry.py       Provider registration and lookup
+    anthropic.py      Claude Agent SDK wrapper
+    openai_compat.py  OpenAI-compatible provider (+ Groq, OpenRouter, Ollama)
+    tools.py          Local tool implementations for non-Claude providers
+    types.py          Shared types (ProviderStepResult)
+  memory/             Persistent memory (JSON + MCP server)
+  observability/      Terminal display and SDK hooks
 
 plugins/
-  test_gen/         Generate test suites
-  issue_solve/      Solve GitHub issues end-to-end
-  code_review/      Review code changes
-  refactor/         Refactor code
-  docs_gen/         Generate documentation
-  debug/            Systematic debugging
+  test_gen/           Generate test suites
+  issue_solve/        Solve GitHub issues end-to-end
+  code_review/        Review code changes
+  refactor/           Refactor code
+  docs_gen/           Generate documentation
+  debug/              Systematic debugging
 ```
 
 ## Configuration
 
 ```bash
-pipewright config set model sonnet
-pipewright config set max_budget_usd 1.00
-pipewright config get model
+pipewright config set provider groq           # default provider
+pipewright config set model sonnet            # default model alias
+pipewright config set max_budget_usd 1.00     # budget cap per step
+pipewright config get provider
 ```
 
 Settings stored in `~/.pipewright/config.json`. API keys come from

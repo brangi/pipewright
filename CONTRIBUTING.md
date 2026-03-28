@@ -7,13 +7,23 @@ git clone https://github.com/brangi/pipewright.git
 cd pipewright
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,openai]"
 ```
 
-Create a `.env` file with your Anthropic API key:
+Create a `.env` file with your API keys (at least one provider):
 
 ```bash
-echo "ANTHROPIC_API_KEY=sk-..." > .env
+ANTHROPIC_API_KEY=sk-ant-...          # Anthropic (default)
+OPENAI_API_KEY=sk-proj-...            # OpenAI (optional)
+GROQ_API_KEY=gsk_...                  # Groq free tier (optional)
+OPENROUTER_API_KEY=sk-or-...          # OpenRouter free models (optional)
+```
+
+Verify your setup:
+
+```bash
+pipewright list          # see available workflows
+pipewright providers     # see available providers
 ```
 
 ## Running Tests
@@ -27,6 +37,7 @@ pytest -q                         # quiet summary
 All tests must pass before submitting a PR. The test suite includes:
 - Plugin structural tests (steps, prompts, tools)
 - Engine and CLI tests
+- Provider tests (types, registry, Anthropic, OpenAI-compat, tools)
 - License header enforcement (see below)
 
 ## Adding a Plugin
@@ -44,6 +55,9 @@ Each plugin lives in `plugins/<name>/` and exports a `Workflow` subclass with:
 - `name` -- the CLI name (e.g., `"my-plugin"`)
 - `description` -- short description shown in `pipewright list`
 - `steps` -- list of `Step` objects defining the pipeline
+
+Plugins are provider-agnostic -- they work with all 5 providers automatically.
+Use model aliases (`haiku`, `sonnet`, `opus`) instead of provider-specific model names.
 
 Run `pipewright list` to verify your plugin is discovered.
 
