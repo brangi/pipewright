@@ -31,7 +31,12 @@ def main():
 @click.option("--provider", "-p", default=None,
               help="LLM provider (anthropic, openai, ollama, groq, openrouter)")
 @click.option("--yes", "-y", is_flag=True, default=False, help="Auto-approve checkpoints")
-def run(workflow: str, target: str, model: str | None, provider: str | None, yes: bool):
+@click.option("--output", "-o", default=None,
+              help="Write JSON result to file (use '-' for stdout)")
+@click.option("--format", "-f", "fmt", default="text", type=click.Choice(["text", "json"]),
+              help="Output format: text (default) or json")
+def run(workflow: str, target: str, model: str | None, provider: str | None, yes: bool,
+        output: str | None, fmt: str):
     """Run a workflow on a target file or directory.
 
     Examples:
@@ -41,6 +46,10 @@ def run(workflow: str, target: str, model: str | None, provider: str | None, yes
         pipewright run test-gen ./src/auth.py -p groq -y
 
         pipewright run issue-solve #42
+
+        pipewright run test-gen ./src/auth.py --format json
+
+        pipewright run test-gen ./src/auth.py -o result.json
     """
     # Find the plugins directory (relative to where pipewright is installed)
     import pathlib
@@ -56,8 +65,19 @@ def run(workflow: str, target: str, model: str | None, provider: str | None, yes
         click.echo(f"Available: {', '.join(workflows.keys()) or '(none found)'}")
         raise SystemExit(1)
 
-    engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir,
-               auto_approve=yes, provider_override=provider)
+    result = engine.run(workflows[workflow], target, model_override=model, plugins_dir=plugins_dir,
+                        auto_approve=yes, provider_override=provider)
+
+    # Write structured output if requested
+    if result and (output or fmt == "json"):
+        json_str = result.to_json()
+        if output == "-":
+            click.echo(json_str)
+        elif output:
+            pathlib.Path(output).write_text(json_str + "\n")
+            click.echo(f"Result written to {output}")
+        elif fmt == "json":
+            click.echo(json_str)
 
 
 @main.command("list")

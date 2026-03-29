@@ -8,12 +8,14 @@ LLM provider. Each Step becomes an agent call. Results flow from step to
 step via context. Checkpoints pause for user approval.
 """
 import asyncio
+import time
 from pathlib import Path
 from pipewright.workflow import Workflow, Step
 from pipewright.plugins.loader import discover_plugins
 from pipewright.observability import display
 from pipewright import config as cfg
 from pipewright.providers import get_provider
+from pipewright.providers.types import StepResult, WorkflowResult
 
 
 def _summarize(tool_name: str, tool_input: dict) -> str:
@@ -36,7 +38,7 @@ def _summarize(tool_name: str, tool_input: dict) -> str:
 
 async def run_workflow(workflow: Workflow, target: str, model_override: str | None = None,
                        plugins_dir: Path | None = None, auto_approve: bool = False,
-                       provider_override: str | None = None):
+                       provider_override: str | None = None) -> WorkflowResult | None:
     """Execute a workflow against a target.
 
     Args:
@@ -46,6 +48,9 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         plugins_dir: Directory to discover plugins from (default: cwd/plugins)
         auto_approve: Skip checkpoint prompts (for CI/non-interactive use)
         provider_override: Override the provider (anthropic, openai, ollama, groq, openrouter)
+
+    Returns:
+        WorkflowResult with structured execution data, or None on early failure.
     """
     if plugins_dir is None:
         plugins_dir = Path.cwd() / "plugins"
@@ -57,7 +62,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         provider = get_provider(provider_name)
     except ValueError as e:
         display.error(str(e))
-        return
+        return None
 
     # Validate provider configuration
     config_error = provider.validate_config()
@@ -65,7 +70,7 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         display.error(config_error)
         if provider_name == "anthropic":
             display.info("Hint: Create a .env file with: ANTHROPIC_API_KEY=sk-...")
-        return
+        return None
 
     default_model_alias = model_override or config.get("model", "haiku")
     max_budget = config.get("max_budget_usd", 0.50)
@@ -94,6 +99,10 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
     result_text = "(no output)"  # last step's output for chain target mode
 
+    # Track structured results
+    workflow_start = time.time()
+    step_results: list[StepResult] = []
+
     for i, step in enumerate(workflow.steps, 1):
         display.step_banner(step.name, i, len(workflow.steps))
 
@@ -109,6 +118,8 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             f"of the '{workflow.name}' workflow. Be focused and thorough.\n\n"
             f"Environment context:\n{env_context}"
         )
+
+        step_start = time.time()
 
         # Retry loop — user can retry failed steps
         while True:
@@ -130,9 +141,22 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
                 response = display.checkpoint_prompt("Retry this step, skip it, or abort?")
                 if response.lower() in ("abort", "n", "no"):
                     display.error("Workflow aborted.")
-                    return
+                    step_results.append(StepResult(
+                        step_name=step.name, step_number=i, model=step_model,
+                        output_text="(aborted)", skipped=True,
+                        duration_seconds=time.time() - step_start,
+                    ))
+                    wf_duration = time.time() - workflow_start
+                    total_cost = sum(s.cost_usd for s in step_results if s.cost_usd)
+                    return WorkflowResult(
+                        workflow_name=workflow.name, target=target,
+                        provider=provider_name, model_alias=default_model_alias,
+                        steps=step_results, success=False,
+                        total_cost_usd=total_cost, total_duration_seconds=wf_duration,
+                    )
                 elif response.lower() in ("retry", "r", "y", "yes"):
                     display.info("Retrying step...")
+                    step_start = time.time()  # reset timer for retry
                     continue  # re-run this step
                 else:
                     # Default: skip this step
@@ -140,9 +164,23 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
                     break
             break  # success: exit retry loop
 
+        step_duration = time.time() - step_start
+
         # Show results
         result_text = result.output_text if result else "(skipped)"
         display.result_box(f"Step: {step.name}", result_text[:2000])  # Truncate for display
+
+        # Record structured step result
+        step_results.append(StepResult(
+            step_name=step.name,
+            step_number=i,
+            model=step_model,
+            output_text=result_text,
+            cost_usd=result.total_cost_usd if result else None,
+            num_turns=result.num_turns if result else 0,
+            duration_seconds=step_duration,
+            skipped=result is None,
+        ))
 
         # Add to context for next step
         ctx_limit = step.context_limit if step.context_limit is not None else config.get("context_limit", 1000)
@@ -155,7 +193,14 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             )
             if response.lower() in ("n", "no", "abort"):
                 display.error("Workflow stopped by user.")
-                return
+                wf_duration = time.time() - workflow_start
+                total_cost = sum(s.cost_usd for s in step_results if s.cost_usd)
+                return WorkflowResult(
+                    workflow_name=workflow.name, target=target,
+                    provider=provider_name, model_alias=default_model_alias,
+                    steps=step_results, success=False,
+                    total_cost_usd=total_cost, total_duration_seconds=wf_duration,
+                )
             elif response and response.lower() not in ("y", "yes", ""):
                 # User gave feedback — append to context for next step
                 context += f"\nUser feedback: {response}\n"
@@ -164,6 +209,20 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             display.info(f"Checkpoint '{step.name}' auto-approved")
 
     display.success(f"Workflow '{workflow.name}' complete!")
+
+    # Build final workflow result
+    wf_duration = time.time() - workflow_start
+    total_cost = sum(s.cost_usd for s in step_results if s.cost_usd)
+    workflow_result = WorkflowResult(
+        workflow_name=workflow.name,
+        target=target,
+        provider=provider_name,
+        model_alias=default_model_alias,
+        steps=step_results,
+        success=True,
+        total_cost_usd=total_cost,
+        total_duration_seconds=wf_duration,
+    )
 
     # Execute chained workflows
     for chain in workflow.chains:
@@ -181,10 +240,12 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
         await run_workflow(workflows[chain.workflow], new_target, model_override, plugins_dir,
                            auto_approve, provider_override)
 
+    return workflow_result
+
 
 def run(workflow: Workflow, target: str, model_override: str | None = None,
         plugins_dir: Path | None = None, auto_approve: bool = False,
-        provider_override: str | None = None):
+        provider_override: str | None = None) -> WorkflowResult | None:
     """Sync wrapper for run_workflow."""
-    asyncio.run(run_workflow(workflow, target, model_override, plugins_dir,
-                             auto_approve, provider_override))
+    return asyncio.run(run_workflow(workflow, target, model_override, plugins_dir,
+                                    auto_approve, provider_override))
