@@ -37,22 +37,35 @@
 - [x] Structured output: `--format json` and `--output/-o` for JSON export
 - [x] `WorkflowResult` / `StepResult` dataclasses with `to_dict()` / `to_json()`
 
-## v1.0.0 -- Production Ready
+## v1.0.0 — Production Ready
 
-Goal: Make pipewright stable, extensible, and production-grade.
+Goal: Make pipewright stable, reliable, and ready for real-world use.
 
+### Must Have
+
+- [ ] Workflow history and resume (`pipewright history`, `pipewright resume <run-id>`)
+- [ ] Per-project config (`.pipewright.json` in project root, merged with global)
+- [ ] Rate limit retry with exponential backoff (429 handling in providers)
+- [ ] Dry-run mode (`--dry-run` — preview steps, tools, and estimated cost)
 - [ ] Parallel step execution within workflows
-- [ ] Plugin registry / marketplace
-- [ ] CI/CD integration examples (GitHub Actions workflow plugin)
 - [ ] Webhook delivery and JSONL streaming
+
+### Should Have
+
+- [ ] `--verbose` / `--quiet` CLI flags for output control
+- [ ] Token counting per step and workflow (in StepResult/WorkflowResult)
+- [ ] Streaming output (real-time text feedback during long steps)
+- [ ] Plugin dependency validation (ensure required tools like `gh` exist before running)
 - [ ] Configuration validation and schema
-- [ ] Comprehensive error recovery and retry strategies
-- [ ] Performance benchmarks and optimization
+- [ ] New plugins: security-scan, ci-gen
 
 ## Future
 
+- Remote plugin install from git/PyPI (`pipewright plugin install <url>`)
+- Plugin marketplace / registry
 - Web dashboard for workflow results and history
-- Team features (shared memory, workflow templates)
+- Custom tool definitions per plugin
 - VS Code / IDE extension
-- Self-hosted plugin registry
-- Workflow composition (combine plugins into meta-workflows)
+- Team features (shared memory, workflow templates)
+- Cost estimation before execution
+- Conditional / skippable steps
