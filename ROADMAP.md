@@ -34,6 +34,8 @@
 - [x] CLI `--provider` / `-p` flag and `pipewright providers` command
 - [x] Model alias resolution per provider (haiku/sonnet/opus map to appropriate models)
 - [x] Optional `openai` dependency: `pip install pipewright[openai]`
+- [x] Structured output: `--format json` and `--output/-o` for JSON export
+- [x] `WorkflowResult` / `StepResult` dataclasses with `to_dict()` / `to_json()`
 
 ## v1.0.0 -- Production Ready
 
@@ -42,7 +44,7 @@ Goal: Make pipewright stable, extensible, and production-grade.
 - [ ] Parallel step execution within workflows
 - [ ] Plugin registry / marketplace
 - [ ] CI/CD integration examples (GitHub Actions workflow plugin)
-- [ ] Streaming output to external tools (JSON, webhooks)
+- [ ] Webhook delivery and JSONL streaming
 - [ ] Configuration validation and schema
 - [ ] Comprehensive error recovery and retry strategies
 - [ ] Performance benchmarks and optimization

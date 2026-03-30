@@ -128,6 +128,54 @@ For CI or non-interactive use, pass `-y` to auto-approve all checkpoints:
 pipewright run test-gen ./src/utils.py -y
 ```
 
+### Structured Output (JSON)
+
+Pipewright can export workflow results as structured JSON for integration with
+dashboards, CI/CD pipelines, Slack bots, or other tools.
+
+**Print JSON to terminal:**
+
+```bash
+pipewright run test-gen ./src/utils.py --format json -y
+```
+
+**Write JSON to a file:**
+
+```bash
+pipewright run test-gen ./src/utils.py -o result.json -y
+```
+
+**Pipe JSON to stdout (suppresses terminal output):**
+
+```bash
+pipewright run test-gen ./src/utils.py -o - -y 2>/dev/null | jq .
+```
+
+The JSON output includes per-step metadata:
+
+```json
+{
+  "workflow_name": "test-gen",
+  "target": "./src/utils.py",
+  "provider": "groq",
+  "model_alias": "haiku",
+  "steps": [
+    {
+      "step_name": "analyze",
+      "step_number": 1,
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "output_text": "Found 3 functions...",
+      "cost_usd": null,
+      "num_turns": 2,
+      "duration_seconds": 4.5,
+      "skipped": false
+    }
+  ],
+  "success": true,
+  "total_cost_usd": 0.0,
+  "total_duration_seconds": 12.3
+}
+
 ## Cost Expectations
 
 Costs vary significantly by provider:

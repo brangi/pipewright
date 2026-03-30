@@ -82,6 +82,13 @@ Auto-approve checkpoints for CI/scripted use:
 pipewright run test-gen ./src/auth.py -y
 ```
 
+Export results as JSON:
+
+```bash
+pipewright run test-gen ./src/auth.py --format json
+pipewright run test-gen ./src/auth.py -o result.json -y
+```
+
 ## Providers
 
 Pipewright supports multiple LLM providers. Use the `--provider` / `-p` flag to
@@ -225,7 +232,7 @@ src/pipewright/
     anthropic.py      Claude Agent SDK wrapper
     openai_compat.py  OpenAI-compatible provider (+ Groq, OpenRouter, Ollama)
     tools.py          Local tool implementations for non-Claude providers
-    types.py          Shared types (ProviderStepResult)
+    types.py          Shared types (ProviderStepResult, StepResult, WorkflowResult)
   memory/             Persistent memory (JSON + MCP server)
   observability/      Terminal display and SDK hooks
 
