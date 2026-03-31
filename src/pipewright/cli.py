@@ -272,6 +272,113 @@ def setup():
     click.echo()
 
 
+CI_PROVIDERS = {k: v for k, v in PROVIDER_INFO.items() if v["env_var"] is not None}
+
+
+def _generate_workflow_yaml(workflow_name: str, provider_name: str, env_var: str) -> str:
+    """Generate a GitHub Actions workflow YAML string."""
+    pip_extra = "" if provider_name == "anthropic" else "[openai]"
+    return (
+        f"name: Pipewright\n"
+        f"\n"
+        f"on:\n"
+        f"  pull_request:\n"
+        f"    branches: [main]\n"
+        f"\n"
+        f"jobs:\n"
+        f"  pipewright:\n"
+        f"    runs-on: ubuntu-latest\n"
+        f"    steps:\n"
+        f"      - uses: actions/checkout@v4\n"
+        f"\n"
+        f"      - uses: actions/setup-python@v5\n"
+        f"        with:\n"
+        f'          python-version: "3.11"\n'
+        f"\n"
+        f"      - name: Install pipewright\n"
+        f"        run: pip install pipewright{pip_extra}\n"
+        f"\n"
+        f"      - name: Run {workflow_name}\n"
+        f"        env:\n"
+        f"          {env_var}: ${{{{ secrets.{env_var} }}}}\n"
+        f"        run: pipewright run {workflow_name} . -p {provider_name} -y\n"
+    )
+
+
+@main.command("ci-setup")
+def ci_setup():
+    """Generate a GitHub Actions workflow for pipewright.
+
+    Creates .github/workflows/pipewright.yml in the current directory
+    and tells you which GitHub Secret to add.
+
+    Example:
+
+        pipewright ci-setup
+    """
+    import pathlib
+
+    click.echo()
+    click.echo("  Pipewright CI Setup")
+    click.echo("  ===================")
+
+    # Discover workflows
+    plugins_dir = pathlib.Path.cwd() / "plugins"
+    if not plugins_dir.exists():
+        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+
+    workflows = discover_plugins(plugins_dir)
+    if not workflows:
+        click.echo("\n  No workflows found. Add plugins to ./plugins/ first.")
+        raise SystemExit(1)
+
+    # Pick workflow
+    click.echo("\n  Which workflow should CI run?\n")
+    wf_list = list(workflows.items())
+    for i, (name, wf) in enumerate(wf_list, 1):
+        click.echo(f"  {i}. {name:15s} {wf.description}")
+
+    click.echo()
+    while True:
+        wf_choice = click.prompt(f"  Enter number (1-{len(wf_list)})", type=int)
+        if 1 <= wf_choice <= len(wf_list):
+            break
+        click.echo("  Invalid choice. Try again.")
+
+    workflow_name = wf_list[wf_choice - 1][0]
+
+    # Pick provider (no Ollama — won't work in CI)
+    click.echo("\n  Which provider?\n")
+    prov_list = list(CI_PROVIDERS.items())
+    for i, (name, info) in enumerate(prov_list, 1):
+        click.echo(f"  {i}. {name:12s}  {info['cost']}")
+
+    click.echo()
+    while True:
+        prov_choice = click.prompt(f"  Enter number (1-{len(prov_list)})", type=int)
+        if 1 <= prov_choice <= len(prov_list):
+            break
+        click.echo("  Invalid choice. Try again.")
+
+    provider_name, provider_info = prov_list[prov_choice - 1]
+    env_var = provider_info["env_var"]
+
+    # Generate workflow file
+    workflow_dir = pathlib.Path.cwd() / ".github" / "workflows"
+    workflow_dir.mkdir(parents=True, exist_ok=True)
+    workflow_file = workflow_dir / "pipewright.yml"
+
+    yaml_content = _generate_workflow_yaml(workflow_name, provider_name, env_var)
+    workflow_file.write_text(yaml_content)
+
+    click.echo(f"\n  Created: {workflow_file}")
+    click.echo()
+    click.echo(f"  Next step:")
+    click.echo(f"    Add {env_var} to your repo secrets:")
+    click.echo(f"    GitHub -> Settings -> Secrets -> Actions -> New repository secret")
+    click.echo()
+
+
 def _to_class_name(snake_name: str) -> str:
     """Convert snake_case to PascalCase. e.g. 'my_plugin' -> 'MyPlugin'."""
     return "".join(word.capitalize() for word in snake_name.split("_"))

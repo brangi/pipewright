@@ -270,6 +270,27 @@ Settings stored in `~/.pipewright/config.json`. API keys are stored in
 `~/.pipewright/.env` (set by `pipewright setup`), or you can use a `.env`
 file in your project root to override.
 
+## CI/CD
+
+Generate a GitHub Actions workflow:
+
+```bash
+pipewright ci-setup
+```
+
+This creates `.github/workflows/pipewright.yml` and tells you which GitHub
+Secret to add (Settings -> Secrets -> Actions).
+
+Or configure manually -- pipewright works with any CI that sets environment
+variables:
+
+```yaml
+- name: Run pipewright
+  env:
+    GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  run: pip install pipewright[openai] && pipewright run test-gen . -p groq -y
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding guidelines,
