@@ -5,6 +5,8 @@ multi-step pipelines where each step is focused, checkpointed, and cost-optimize
 
 Works with **5 LLM providers** -- from free models to Claude Opus.
 
+![Pipewright Demo](demo.gif)
+
 ## Install
 
 ```bash

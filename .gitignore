@@ -36,5 +36,9 @@ demo/java-utils/lib/
 /go.mod
 /go.sum
 
+# Demo recording (local paths in tape file)
+demo.tape
+demo.mp4
+
 # OS
 .DS_Store
