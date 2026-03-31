@@ -11,8 +11,11 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from current working directory
-load_dotenv()
+# Load .env from ~/.pipewright first, then CWD (CWD overrides)
+_global_env = Path.home() / ".pipewright" / ".env"
+if _global_env.exists():
+    load_dotenv(_global_env)
+load_dotenv()  # CWD .env can override global
 
 CONFIG_DIR = Path.home() / ".pipewright"
 CONFIG_FILE = CONFIG_DIR / "config.json"

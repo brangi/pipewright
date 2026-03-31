@@ -22,15 +22,21 @@ cd pipewright
 pip install -e ".[dev,openai]"
 ```
 
-Requires Python 3.11+ and at least one provider API key:
+Requires Python 3.11+. Then run setup to configure your provider and API key:
 
 ```bash
-# Pick one (or more) -- add to .env in your project root:
-ANTHROPIC_API_KEY=sk-ant-...          # Anthropic (default)
-OPENAI_API_KEY=sk-proj-...            # OpenAI
-GROQ_API_KEY=gsk_...                  # Groq (free tier)
-OPENROUTER_API_KEY=sk-or-...          # OpenRouter (free models)
-# Ollama needs no key -- just have it running locally
+pipewright setup
+```
+
+This walks you through picking a provider (including free ones like Groq and
+OpenRouter), pasting your API key, and saving it to `~/.pipewright/.env`.
+
+## Quick Start
+
+```bash
+pip install pipewright[openai]        # install with all providers
+pipewright setup                      # pick a provider, paste your key
+pipewright run test-gen ./src/auth.py -y   # generate tests
 ```
 
 ## Usage
@@ -210,7 +216,7 @@ Provider Layer
   ├── AnthropicProvider  (Claude Agent SDK + MCP memory)
   └── OpenAICompatProvider (openai SDK + local tools)
         ├── OpenAI      (gpt-4o-mini, gpt-4o)
-        ├── Groq        (Llama 4 Scout — free)
+        ├── Groq        (Qwen3 32B — free)
         ├── OpenRouter   (free model router)
         └── Ollama       (local models — free)
 ```
@@ -249,6 +255,10 @@ plugins/
 
 ## Configuration
 
+Run `pipewright setup` to configure your provider and API key interactively.
+
+For advanced usage:
+
 ```bash
 pipewright config set provider groq           # default provider
 pipewright config set model sonnet            # default model alias
@@ -256,8 +266,9 @@ pipewright config set max_budget_usd 1.00     # budget cap per step
 pipewright config get provider
 ```
 
-Settings stored in `~/.pipewright/config.json`. API keys come from
-environment variables or `.env` (never stored in config).
+Settings stored in `~/.pipewright/config.json`. API keys are stored in
+`~/.pipewright/.env` (set by `pipewright setup`), or you can use a `.env`
+file in your project root to override.
 
 ## Contributing
 

@@ -164,6 +164,114 @@ def memory_search(query: str):
         click.echo(f"  [{r['category']}] {r['key']}: {r['value']}")
 
 
+PROVIDER_INFO = {
+    "anthropic": {
+        "env_var": "ANTHROPIC_API_KEY",
+        "cost": "Paid",
+        "url": "https://console.anthropic.com/settings/keys",
+        "description": "Claude models (haiku, sonnet, opus)",
+    },
+    "openai": {
+        "env_var": "OPENAI_API_KEY",
+        "cost": "Paid",
+        "url": "https://platform.openai.com/api-keys",
+        "description": "GPT-4o, GPT-4o-mini",
+    },
+    "groq": {
+        "env_var": "GROQ_API_KEY",
+        "cost": "Free tier",
+        "url": "https://console.groq.com/keys",
+        "description": "Qwen3, Llama 3.3 — fast inference",
+    },
+    "openrouter": {
+        "env_var": "OPENROUTER_API_KEY",
+        "cost": "Free models available",
+        "url": "https://openrouter.ai/keys",
+        "description": "Access 100+ models, many free",
+    },
+    "ollama": {
+        "env_var": None,
+        "cost": "Free (local)",
+        "url": "https://ollama.com",
+        "description": "Run models locally — no API key needed",
+    },
+}
+
+
+@main.command()
+def setup():
+    """Interactive setup — configure your LLM provider and API key.
+
+    Stores the API key in ~/.pipewright/.env and sets your default provider.
+
+    Example:
+
+        pipewright setup
+    """
+    click.echo()
+    click.echo("  Welcome to Pipewright Setup")
+    click.echo("  ===========================")
+    click.echo()
+    click.echo("  Choose an LLM provider:\n")
+
+    providers = list(PROVIDER_INFO.items())
+    for i, (name, info) in enumerate(providers, 1):
+        label = f"  {i}. {name:12s}  {info['cost']:24s}  {info['description']}"
+        click.echo(label)
+
+    click.echo()
+    while True:
+        choice = click.prompt("  Enter number (1-5)", type=int)
+        if 1 <= choice <= len(providers):
+            break
+        click.echo("  Invalid choice. Try again.")
+
+    provider_name, info = providers[choice - 1]
+
+    # Ollama needs no key
+    if info["env_var"] is None:
+        click.echo(f"\n  {provider_name} runs locally — no API key needed.")
+        click.echo("  Make sure Ollama is running: ollama serve")
+    else:
+        click.echo(f"\n  Get your API key at: {info['url']}")
+        click.echo()
+        api_key = click.prompt(f"  Paste your {info['env_var']}", hide_input=True)
+
+        if not api_key.strip():
+            click.echo("  No key entered. Setup cancelled.")
+            raise SystemExit(1)
+
+        # Write to ~/.pipewright/.env
+        env_path = cfg.CONFIG_DIR / ".env"
+        cfg.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Read existing env file to preserve other keys
+        existing = {}
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    existing[k.strip()] = v.strip()
+
+        existing[info["env_var"]] = api_key.strip()
+
+        lines = [f"{k}={v}" for k, v in existing.items()]
+        env_path.write_text("\n".join(lines) + "\n")
+        env_path.chmod(0o600)
+
+        click.echo(f"\n  Key saved to {env_path}")
+
+    # Set as default provider
+    cfg.set_value("provider", provider_name)
+
+    click.echo(f"  Default provider set to: {provider_name}")
+    click.echo()
+    click.echo("  You're all set! Try:")
+    click.echo(f"    pipewright run test-gen ./src/example.py -y")
+    click.echo()
+
+
 def _to_class_name(snake_name: str) -> str:
     """Convert snake_case to PascalCase. e.g. 'my_plugin' -> 'MyPlugin'."""
     return "".join(word.capitalize() for word in snake_name.split("_"))
