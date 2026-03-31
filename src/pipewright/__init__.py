@@ -2,4 +2,4 @@
 # SPDX-License-Identifier: MIT
 
 """Pipewright — The playwright of dev pipelines."""
-__version__ = "0.3.0"
+__version__ = "0.3.1"
