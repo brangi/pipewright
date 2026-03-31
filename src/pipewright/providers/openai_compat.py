@@ -38,9 +38,9 @@ OLLAMA_ALIASES = {
 }
 
 GROQ_ALIASES = {
-    "haiku": "meta-llama/llama-4-scout-17b-16e-instruct",
-    "sonnet": "meta-llama/llama-4-scout-17b-16e-instruct",
-    "opus": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "haiku": "qwen/qwen3-32b",
+    "sonnet": "qwen/qwen3-32b",
+    "opus": "llama-3.3-70b-versatile",
 }
 
 OPENROUTER_ALIASES = {
@@ -108,8 +108,14 @@ class OpenAICompatibleProvider(Provider):
         client = self._get_client()
         active_tools = self._build_tool_list(tools)
 
+        tool_instruction = (
+            "IMPORTANT: You MUST use the provided tools to interact with files "
+            "and the system. NEVER write code directly in your response — always "
+            "use the Write tool to create files and the Edit tool to modify them. "
+            "When you need to run commands, use the Bash tool.\n\n"
+        )
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": tool_instruction + system_prompt},
             {"role": "user", "content": prompt},
         ]
 
@@ -122,12 +128,26 @@ class OpenAICompatibleProvider(Provider):
             kwargs = {
                 "model": model,
                 "messages": messages,
+                "max_tokens": 4096,
             }
             if active_tools:
                 kwargs["tools"] = active_tools
                 kwargs["tool_choice"] = "auto"
 
-            response = await client.chat.completions.create(**kwargs)
+            try:
+                response = await client.chat.completions.create(**kwargs)
+            except Exception as api_err:
+                if "tool_use_failed" in str(api_err) and turns < max_turns:
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            "You must use the Write tool to create files. "
+                            "Do not write code in your response. Call the "
+                            "Write tool with file_path and content parameters."
+                        ),
+                    })
+                    continue
+                raise
             choice = response.choices[0]
             message = choice.message
 
