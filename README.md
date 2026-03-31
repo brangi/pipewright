@@ -115,8 +115,8 @@ pipewright config set provider groq
 |----------|------|--------|-------|
 | **Anthropic** | Paid | Claude Haiku, Sonnet, Opus | `ANTHROPIC_API_KEY` |
 | **OpenAI** | Paid (~$0.003/run) | GPT-4o-mini, GPT-4o | `OPENAI_API_KEY` + `pip install pipewright[openai]` |
-| **Groq** | Free tier | Llama 4 Scout 17B | `GROQ_API_KEY` + `pip install pipewright[openai]` |
-| **OpenRouter** | Free models | Auto-selects best free model | `OPENROUTER_API_KEY` + `pip install pipewright[openai]` |
+| **Groq** | Free tier | Qwen3 32B | `GROQ_API_KEY` + `pip install pipewright[openai]` |
+| **OpenRouter** | Free models | StepFun Step 3.5 Flash, Nemotron 120B | `OPENROUTER_API_KEY` + `pip install pipewright[openai]` |
 | **Ollama** | Free (local) | Llama, Mistral, CodeLlama, etc. | `pip install pipewright[openai]` + Ollama running |
 
 ### Model Aliases
@@ -126,9 +126,9 @@ model for each provider:
 
 | Alias | Anthropic | OpenAI | Groq | OpenRouter | Ollama |
 |-------|-----------|--------|------|------------|--------|
-| haiku | claude-haiku-4-5 | gpt-4o-mini | qwen3-32b | openrouter/free | llama3.2:3b |
-| sonnet | claude-sonnet-4-5 | gpt-4o | qwen3-32b | openrouter/free | llama3.3:70b |
-| opus | claude-opus-4-6 | gpt-4o | llama-3.3-70b | openrouter/free | llama3.3:70b |
+| haiku | claude-haiku-4-5 | gpt-4o-mini | qwen3-32b | step-3.5-flash:free | llama3.2:3b |
+| sonnet | claude-sonnet-4-5 | gpt-4o | qwen3-32b | nemotron-3-super-120b:free | llama3.3:70b |
+| opus | claude-opus-4-6 | gpt-4o | llama-3.3-70b | nemotron-3-super-120b:free | llama3.3:70b |
 
 This means plugins are **fully provider-agnostic** -- the same workflow runs
 on any provider without changes.

@@ -45,7 +45,7 @@ Goal: Make pipewright stable, reliable, and ready for real-world use.
 
 - [ ] Workflow history and resume (`pipewright history`, `pipewright resume <run-id>`)
 - [ ] Per-project config (`.pipewright.json` in project root, merged with global)
-- [ ] Rate limit retry with exponential backoff (429 handling in providers)
+- [x] Rate limit retry with exponential backoff (429 handling in providers)
 - [ ] Dry-run mode (`--dry-run` — preview steps, tools, and estimated cost)
 - [ ] Parallel step execution within workflows
 - [ ] Webhook delivery and JSONL streaming

@@ -7,6 +7,7 @@ Implements a full agent loop: send prompt → handle tool calls → execute
 tools locally → send results back → repeat until the model stops or
 max_turns is reached.
 """
+import asyncio
 import json
 import os
 from typing import Callable
@@ -44,9 +45,9 @@ GROQ_ALIASES = {
 }
 
 OPENROUTER_ALIASES = {
-    "haiku": "openrouter/free",
-    "sonnet": "openrouter/free",
-    "opus": "openrouter/free",
+    "haiku": "stepfun/step-3.5-flash:free",
+    "sonnet": "nvidia/nemotron-3-super-120b:free",
+    "opus": "nvidia/nemotron-3-super-120b:free",
 }
 
 
@@ -134,20 +135,35 @@ class OpenAICompatibleProvider(Provider):
                 kwargs["tools"] = active_tools
                 kwargs["tool_choice"] = "auto"
 
-            try:
-                response = await client.chat.completions.create(**kwargs)
-            except Exception as api_err:
-                if "tool_use_failed" in str(api_err) and turns < max_turns:
-                    messages.append({
-                        "role": "user",
-                        "content": (
-                            "You must use the Write tool to create files. "
-                            "Do not write code in your response. Call the "
-                            "Write tool with file_path and content parameters."
-                        ),
-                    })
-                    continue
-                raise
+            # Retry with exponential backoff for rate limits
+            response = None
+            max_retries = 3
+            for attempt in range(max_retries + 1):
+                try:
+                    response = await client.chat.completions.create(**kwargs)
+                    break
+                except Exception as api_err:
+                    err_str = str(api_err)
+                    # Rate limit — retry with backoff
+                    if ("429" in err_str or "rate" in err_str.lower()) and attempt < max_retries:
+                        wait = 2 ** attempt * 5  # 5s, 10s, 20s
+                        await asyncio.sleep(wait)
+                        continue
+                    # Tool use format error — nudge model and retry turn
+                    if "tool_use_failed" in err_str and turns < max_turns:
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                "You must use the Write tool to create files. "
+                                "Do not write code in your response. Call the "
+                                "Write tool with file_path and content parameters."
+                            ),
+                        })
+                        response = None
+                        break
+                    raise
+            if response is None:
+                continue  # tool_use_failed or exhausted — retry outer loop
             choice = response.choices[0]
             message = choice.message
 

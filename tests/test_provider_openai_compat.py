@@ -65,7 +65,7 @@ class TestOpenRouterAliases:
     def test_haiku_resolves(self):
         p = OpenRouterProvider()
         resolved = p.resolve_model("haiku")
-        assert "free" in resolved or "deepseek" in resolved
+        assert ":free" in resolved
 
     def test_passthrough(self):
         p = OpenRouterProvider()
