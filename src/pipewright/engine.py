@@ -126,6 +126,9 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
     display.info(f"Target: {target}")
     display.info(f"Provider: {provider_name} | Model: {default_model_alias} | Budget cap: ${max_budget}")
 
+    # Context accumulates results from each step (initialized before hooks)
+    context = f"Target: {target}\n"
+
     # on_start hook
     if workflow.on_start:
         hook_ctx = HookContext(
@@ -153,9 +156,6 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
     if venv_python:
         env_context += f"Python executable: {venv_python} (use this for running Python commands)\n"
-
-    # Context accumulates results from each step
-    context = f"Target: {target}\n"
 
     result_text = "(no output)"  # last step's output for chain target mode
 

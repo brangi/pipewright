@@ -85,8 +85,9 @@ def compact(text: str, limit: int = 800) -> str:
     # 3. Assemble summary
     summary = "\n".join(sections)
 
-    # Fill remaining space with head/tail of raw text
-    if len(summary) < limit - 100:
+    # Fill remaining space with head/tail of raw text (only when no
+    # structured content was extracted — avoids reintroducing duplicates)
+    if len(summary) < limit - 100 and not key_lines and not files:
         remaining = limit - len(summary) - 20
         half = remaining // 2
         if half > 0:

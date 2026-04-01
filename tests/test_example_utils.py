@@ -111,24 +111,24 @@ class TestFizzbuzz:
     # Happy path tests - FizzBuzz numbers
     def test_fizzbuzz_divisible_by_15(self):
         """Test numbers divisible by 15 return 'fizzbuzz'."""
-        assert fizzbuzz(15) == "fizzbuzz"
-        assert fizzbuzz(30) == "fizzbuzz"
-        assert fizzbuzz(45) == "fizzbuzz"
+        assert fizzbuzz(15) == "FizzBuzz"
+        assert fizzbuzz(30) == "FizzBuzz"
+        assert fizzbuzz(45) == "FizzBuzz"
 
     def test_fizzbuzz_divisible_by_3_only(self):
         """Test numbers divisible by 3 (but not 15) return 'fizz'."""
-        assert fizzbuzz(3) == "fizz"
-        assert fizzbuzz(6) == "fizz"
-        assert fizzbuzz(9) == "fizz"
-        assert fizzbuzz(12) == "fizz"
-        assert fizzbuzz(18) == "fizz"
+        assert fizzbuzz(3) == "Fizz"
+        assert fizzbuzz(6) == "Fizz"
+        assert fizzbuzz(9) == "Fizz"
+        assert fizzbuzz(12) == "Fizz"
+        assert fizzbuzz(18) == "Fizz"
 
     def test_fizzbuzz_divisible_by_5_only(self):
         """Test numbers divisible by 5 (but not 15) return 'buzz'."""
-        assert fizzbuzz(5) == "buzz"
-        assert fizzbuzz(10) == "buzz"
-        assert fizzbuzz(20) == "buzz"
-        assert fizzbuzz(25) == "buzz"
+        assert fizzbuzz(5) == "Buzz"
+        assert fizzbuzz(10) == "Buzz"
+        assert fizzbuzz(20) == "Buzz"
+        assert fizzbuzz(25) == "Buzz"
 
     def test_fizzbuzz_not_divisible_by_3_or_5(self):
         """Test numbers not divisible by 3 or 5 return string of number."""
@@ -141,7 +141,7 @@ class TestFizzbuzz:
 
     def test_fizzbuzz_zero(self):
         """Test zero returns 'fizzbuzz' (divisible by both 3 and 5)."""
-        assert fizzbuzz(0) == "fizzbuzz"
+        assert fizzbuzz(0) == "FizzBuzz"
 
     def test_fizzbuzz_one(self):
         """Test one returns '1'."""
@@ -149,25 +149,25 @@ class TestFizzbuzz:
 
     def test_fizzbuzz_large_fizzbuzz_number(self):
         """Test large numbers divisible by 15."""
-        assert fizzbuzz(300) == "fizzbuzz"
-        assert fizzbuzz(999) == "fizz"
-        assert fizzbuzz(1000) == "buzz"
+        assert fizzbuzz(300) == "FizzBuzz"
+        assert fizzbuzz(999) == "Fizz"
+        assert fizzbuzz(1000) == "Buzz"
 
     # Edge cases
     def test_fizzbuzz_negative_fizzbuzz(self):
         """Test negative numbers divisible by 15."""
-        assert fizzbuzz(-15) == "fizzbuzz"
-        assert fizzbuzz(-30) == "fizzbuzz"
+        assert fizzbuzz(-15) == "FizzBuzz"
+        assert fizzbuzz(-30) == "FizzBuzz"
 
     def test_fizzbuzz_negative_fizz(self):
         """Test negative numbers divisible by 3."""
-        assert fizzbuzz(-3) == "fizz"
-        assert fizzbuzz(-9) == "fizz"
+        assert fizzbuzz(-3) == "Fizz"
+        assert fizzbuzz(-9) == "Fizz"
 
     def test_fizzbuzz_negative_buzz(self):
         """Test negative numbers divisible by 5."""
-        assert fizzbuzz(-5) == "buzz"
-        assert fizzbuzz(-10) == "buzz"
+        assert fizzbuzz(-5) == "Buzz"
+        assert fizzbuzz(-10) == "Buzz"
 
     def test_fizzbuzz_negative_regular_number(self):
         """Test negative numbers not divisible by 3 or 5."""
@@ -180,9 +180,9 @@ class TestFizzbuzz:
 
     def test_fizzbuzz_large_numbers(self):
         """Test fizzbuzz with very large numbers."""
-        assert fizzbuzz(999999) == "fizz"  # divisible by 3
-        assert fizzbuzz(1000000) == "buzz"  # divisible by 5
-        assert fizzbuzz(1000005) == "fizzbuzz"  # divisible by 15
+        assert fizzbuzz(999999) == "Fizz"  # divisible by 3
+        assert fizzbuzz(1000000) == "Buzz"  # divisible by 5
+        assert fizzbuzz(1000005) == "FizzBuzz"  # divisible by 15
 
     # Return type tests
     def test_fizzbuzz_returns_string(self):
@@ -202,8 +202,8 @@ class TestFizzbuzz:
     def test_fizzbuzz_sequence_1_to_15(self):
         """Test fizzbuzz for the classic sequence 1-15."""
         expected = [
-            "1", "2", "fizz", "4", "buzz", "fizz", "7", "8", "fizz",
-            "buzz", "11", "fizz", "13", "14", "fizzbuzz"
+            "1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz",
+            "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"
         ]
         for i in range(1, 16):
             assert fizzbuzz(i) == expected[i - 1]
@@ -211,9 +211,9 @@ class TestFizzbuzz:
     def test_fizzbuzz_divisibility_precedence(self):
         """Test that 15 divisibility is checked first (returns fizzbuzz, not just fizz or buzz)."""
         # 15 should return 'fizzbuzz', not just 'fizz' (first match)
-        assert fizzbuzz(15) == "fizzbuzz"
-        assert fizzbuzz(15) != "fizz"
-        assert fizzbuzz(15) != "buzz"
+        assert fizzbuzz(15) == "FizzBuzz"
+        assert fizzbuzz(15) != "Fizz"
+        assert fizzbuzz(15) != "Buzz"
 
 
 class TestReverseWords:

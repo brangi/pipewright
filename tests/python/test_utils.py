@@ -35,7 +35,7 @@ def test_fizzbuzz(n, expected):
     ("hello world", "world hello"),
     ("   a   b   ", "b a"),
     ("", ""),
-    ("   ", "  "),
+    ("   ", ""),
     ("one", "one"),
     ("a b c", "c b a"),
     ("a\tb\t\tc", "c b a"),

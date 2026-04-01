@@ -15,11 +15,11 @@ def calculate_average(numbers: list[float]) -> float:
 def fizzbuzz(n: int) -> str:
     """Return fizz, buzz, fizzbuzz, or the number as string."""
     if n % 15 == 0:
-        return "fizzbuzz"
+        return "FizzBuzz"
     elif n % 3 == 0:
-        return "fizz"
+        return "Fizz"
     elif n % 5 == 0:
-        return "buzz"
+        return "Buzz"
     return str(n)
 
 
