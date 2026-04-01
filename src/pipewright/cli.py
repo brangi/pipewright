@@ -379,6 +379,71 @@ def ci_setup():
     click.echo()
 
 
+@main.command()
+@click.argument("session_id", required=False, default=None)
+@click.option("--provider", "-p", default=None, help="Override provider for resumed session")
+@click.option("--yes", "-y", is_flag=True, default=False, help="Auto-approve checkpoints")
+def resume(session_id: str | None, provider: str | None, yes: bool):
+    """Resume an interrupted workflow session.
+
+    Without arguments, lists recent resumable sessions.
+    With a session ID, resumes that specific session.
+
+    Examples:
+
+        pipewright resume
+
+        pipewright resume a1b2c3d4e5f6
+    """
+    import datetime
+    import pathlib
+    from pipewright.session import Session
+
+    if session_id is None:
+        sessions = Session.list_recent()
+        if not sessions:
+            click.echo("No resumable sessions found.")
+            return
+        click.echo("Resumable sessions:\n")
+        for s in sessions:
+            ts = datetime.datetime.fromtimestamp(s.updated_at).strftime("%Y-%m-%d %H:%M")
+            tgt = s.target[:30] + "..." if len(s.target) > 30 else s.target
+            click.echo(
+                f"  {s.id}  {s.workflow_name:15s} "
+                f"step {s.current_step}/{s.total_steps}  "
+                f"target={tgt}  {ts}"
+            )
+        click.echo(f"\nResume with: pipewright resume <session-id>")
+        return
+
+    session = Session.load(session_id)
+    if not session:
+        click.echo(f"Session '{session_id}' not found.")
+        raise SystemExit(1)
+
+    if session.completed:
+        click.echo(f"Session '{session_id}' already completed.")
+        raise SystemExit(1)
+
+    plugins_dir = pathlib.Path.cwd() / "plugins"
+    if not plugins_dir.exists():
+        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+
+    workflows = discover_plugins(plugins_dir)
+    if session.workflow_name not in workflows:
+        click.echo(f"Workflow '{session.workflow_name}' not found.")
+        raise SystemExit(1)
+
+    engine.run(
+        workflows[session.workflow_name],
+        session.target,
+        plugins_dir=plugins_dir,
+        auto_approve=yes,
+        provider_override=provider or session.provider,
+        resume_session_id=session.id,
+    )
+
+
 def _to_class_name(snake_name: str) -> str:
     """Convert snake_case to PascalCase. e.g. 'my_plugin' -> 'MyPlugin'."""
     return "".join(word.capitalize() for word in snake_name.split("_"))

@@ -7,6 +7,7 @@ Plugin authors subclass Workflow to define their own dev automation pipelines.
 Each Workflow is a sequence of Steps. Each Step maps to an agent execution.
 """
 from dataclasses import dataclass, field
+from typing import Callable
 
 
 @dataclass
@@ -33,6 +34,7 @@ class Step:
     model: str | None = None
     max_turns: int | None = None
     context_limit: int | None = None
+    permission_level: str | None = None  # "read", "write", "full" (inferred from tools if None)
 
 
 @dataclass
@@ -51,11 +53,37 @@ class Chain:
     mode: str = "target"
 
 
+@dataclass
+class HookContext:
+    """Data passed to workflow hooks.
+
+    Hooks receive a snapshot of the current execution state. They can set
+    ``abort = True`` to stop the workflow or ``inject_context`` to append
+    extra information to the context passed to subsequent steps.
+    """
+    workflow_name: str
+    step_name: str | None = None
+    step_number: int | None = None
+    total_steps: int | None = None
+    output_text: str | None = None
+    cost_usd: float | None = None
+    duration_seconds: float | None = None
+    context: str = ""
+    target: str = ""
+    abort: bool = False
+    inject_context: str | None = None
+
+
 class Workflow:
     """Base class for workflow plugins.
 
     Subclass this and define `name`, `description`, and `steps` to create
     a new workflow that can be run via `pipewright run <name>`.
+
+    Hooks (optional):
+        on_start: Called before the first step runs.
+        on_step_complete: Called after each step finishes.
+        on_complete: Called after all steps finish.
 
     Example:
         class MyWorkflow(Workflow):
@@ -70,3 +98,6 @@ class Workflow:
     description: str = ""
     steps: list[Step] = []
     chains: list[Chain] = []
+    on_start: Callable[[HookContext], None] | None = None
+    on_step_complete: Callable[[HookContext], None] | None = None
+    on_complete: Callable[[HookContext], None] | None = None

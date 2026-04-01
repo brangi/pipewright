@@ -10,12 +10,57 @@ step via context. Checkpoints pause for user approval.
 import asyncio
 import time
 from pathlib import Path
-from pipewright.workflow import Workflow, Step
+from pipewright.workflow import Workflow, Step, HookContext
 from pipewright.plugins.loader import discover_plugins
 from pipewright.observability import display
 from pipewright import config as cfg
 from pipewright.providers import get_provider
 from pipewright.providers.types import StepResult, WorkflowResult
+from pipewright.context import compact
+from pipewright.session import Session, create_session
+
+
+# Permission levels: each level includes all tools from lower levels
+PERMISSION_TOOLS = {
+    "read":  {"Read", "Glob", "Grep"},
+    "write": {"Read", "Glob", "Grep", "Write", "Edit"},
+    "full":  {"Read", "Glob", "Grep", "Write", "Edit", "Bash"},
+}
+
+
+def _infer_permission(tools: list[str]) -> str:
+    """Infer the minimum permission level required by a tool set."""
+    tool_set = set(tools)
+    if tool_set <= PERMISSION_TOOLS["read"]:
+        return "read"
+    if tool_set <= PERMISSION_TOOLS["write"]:
+        return "write"
+    return "full"
+
+
+def _validate_permissions(step: Step, max_permission: str | None) -> str | None:
+    """Validate step tools against its declared permission level and config cap.
+
+    Returns error message if validation fails, None if OK.
+    """
+    level = step.permission_level or _infer_permission(step.tools)
+    tool_set = set(step.tools)
+    allowed = PERMISSION_TOOLS.get(level, PERMISSION_TOOLS["full"])
+
+    # Check tools match declared level
+    excess = tool_set - allowed
+    if excess:
+        return (f"Step '{step.name}' declares permission '{level}' "
+                f"but uses tools beyond that level: {excess}")
+
+    # Check against config cap
+    if max_permission:
+        level_order = ["read", "write", "full"]
+        if level_order.index(level) > level_order.index(max_permission):
+            return (f"Step '{step.name}' requires '{level}' permission "
+                    f"but max_permission is '{max_permission}'")
+
+    return None
 
 
 def _summarize(tool_name: str, tool_input: dict) -> str:
@@ -38,7 +83,8 @@ def _summarize(tool_name: str, tool_input: dict) -> str:
 
 async def run_workflow(workflow: Workflow, target: str, model_override: str | None = None,
                        plugins_dir: Path | None = None, auto_approve: bool = False,
-                       provider_override: str | None = None) -> WorkflowResult | None:
+                       provider_override: str | None = None,
+                       resume_session_id: str | None = None) -> WorkflowResult | None:
     """Execute a workflow against a target.
 
     Args:
@@ -74,10 +120,24 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
     default_model_alias = model_override or config.get("model", "haiku")
     max_budget = config.get("max_budget_usd", 0.50)
+    max_permission = config.get("max_permission")
 
     display.workflow_start(workflow.name, workflow.description)
     display.info(f"Target: {target}")
     display.info(f"Provider: {provider_name} | Model: {default_model_alias} | Budget cap: ${max_budget}")
+
+    # on_start hook
+    if workflow.on_start:
+        hook_ctx = HookContext(
+            workflow_name=workflow.name, target=target,
+            total_steps=len(workflow.steps),
+        )
+        workflow.on_start(hook_ctx)
+        if hook_ctx.abort:
+            display.error("Workflow aborted by on_start hook.")
+            return None
+        if hook_ctx.inject_context:
+            context += hook_ctx.inject_context + "\n"
 
     # Detect project environment (venv, working directory)
     project_root = plugins_dir.parent if plugins_dir else Path.cwd()
@@ -103,8 +163,48 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
     workflow_start = time.time()
     step_results: list[StepResult] = []
 
+    # Session management (resume or create)
+    session = None
+    start_step = 0
+    if resume_session_id:
+        session = Session.load(resume_session_id)
+        if not session:
+            display.error(f"Session '{resume_session_id}' not found.")
+            return None
+        context = session.context
+        start_step = session.current_step
+        for sr_dict in session.step_results:
+            step_results.append(StepResult(**sr_dict))
+        display.info(f"Resuming session {resume_session_id} from step {start_step + 1}")
+    else:
+        session = create_session(workflow.name, target, provider_name,
+                                 default_model_alias, len(workflow.steps))
+        display.info(f"Session: {session.id}")
+
     for i, step in enumerate(workflow.steps, 1):
+        # Skip completed steps on resume
+        if i - 1 < start_step:
+            display.info(f"Skipping completed step '{step.name}' ({i}/{len(workflow.steps)})")
+            continue
+
         display.step_banner(step.name, i, len(workflow.steps))
+
+        # Validate permissions
+        perm_error = _validate_permissions(step, max_permission)
+        if perm_error:
+            display.error(perm_error)
+            step_results.append(StepResult(
+                step_name=step.name, step_number=i, model="",
+                output_text="(blocked by permissions)", skipped=True,
+            ))
+            wf_duration = time.time() - workflow_start
+            total_cost = sum(s.cost_usd for s in step_results if s.cost_usd)
+            return WorkflowResult(
+                workflow_name=workflow.name, target=target,
+                provider=provider_name, model_alias=default_model_alias,
+                steps=step_results, success=False,
+                total_cost_usd=total_cost, total_duration_seconds=wf_duration,
+            )
 
         # Build the prompt with context from prior steps
         prompt = step.prompt.replace("{target}", target).replace("{context}", context)
@@ -182,9 +282,41 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             skipped=result is None,
         ))
 
-        # Add to context for next step
-        ctx_limit = step.context_limit if step.context_limit is not None else config.get("context_limit", 1000)
-        context += f"\n--- Result from '{step.name}' ---\n{result_text[:ctx_limit]}\n"
+        # on_step_complete hook
+        if workflow.on_step_complete:
+            hook_ctx = HookContext(
+                workflow_name=workflow.name, step_name=step.name,
+                step_number=i, total_steps=len(workflow.steps),
+                output_text=result_text, context=context, target=target,
+                cost_usd=result.total_cost_usd if result else None,
+                duration_seconds=step_duration,
+            )
+            workflow.on_step_complete(hook_ctx)
+            if hook_ctx.abort:
+                display.error(f"Workflow aborted by on_step_complete hook after '{step.name}'.")
+                wf_duration = time.time() - workflow_start
+                total_cost = sum(s.cost_usd for s in step_results if s.cost_usd)
+                return WorkflowResult(
+                    workflow_name=workflow.name, target=target,
+                    provider=provider_name, model_alias=default_model_alias,
+                    steps=step_results, success=False,
+                    total_cost_usd=total_cost, total_duration_seconds=wf_duration,
+                )
+            if hook_ctx.inject_context:
+                context += hook_ctx.inject_context + "\n"
+
+        # Add to context for next step (smart compaction instead of raw truncation)
+        ctx_limit = step.context_limit if step.context_limit is not None else config.get("context_limit", 800)
+        compacted = compact(result_text, limit=ctx_limit)
+        context += f"\n--- Result from '{step.name}' ---\n{compacted}\n"
+
+        # Persist session state after each step
+        if session:
+            from dataclasses import asdict
+            session.context = context
+            session.current_step = i  # 1-based, so this points past the completed step
+            session.step_results = [asdict(sr) for sr in step_results]
+            session.save()
 
         # Checkpoint: pause for user if configured
         if step.checkpoint and not auto_approve:
@@ -209,6 +341,21 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
             display.info(f"Checkpoint '{step.name}' auto-approved")
 
     display.success(f"Workflow '{workflow.name}' complete!")
+
+    # Mark session complete
+    if session:
+        session.mark_complete()
+
+    # on_complete hook
+    if workflow.on_complete:
+        wf_duration_so_far = time.time() - workflow_start
+        total_cost_so_far = sum(s.cost_usd for s in step_results if s.cost_usd)
+        hook_ctx = HookContext(
+            workflow_name=workflow.name, target=target,
+            total_steps=len(workflow.steps), context=context,
+            cost_usd=total_cost_so_far, duration_seconds=wf_duration_so_far,
+        )
+        workflow.on_complete(hook_ctx)
 
     # Build final workflow result
     wf_duration = time.time() - workflow_start
@@ -245,7 +392,9 @@ async def run_workflow(workflow: Workflow, target: str, model_override: str | No
 
 def run(workflow: Workflow, target: str, model_override: str | None = None,
         plugins_dir: Path | None = None, auto_approve: bool = False,
-        provider_override: str | None = None) -> WorkflowResult | None:
+        provider_override: str | None = None,
+        resume_session_id: str | None = None) -> WorkflowResult | None:
     """Sync wrapper for run_workflow."""
     return asyncio.run(run_workflow(workflow, target, model_override, plugins_dir,
-                                    auto_approve, provider_override))
+                                    auto_approve, provider_override,
+                                    resume_session_id))
