@@ -70,3 +70,81 @@ class TestCompact:
         result = compact(content, limit=300)
         assert len(result) <= 300
         assert len(result) > 0
+
+    def test_multiple_extraction_types(self):
+        """A single text with files, headers, and decisions extracts all."""
+        text = (
+            "filler\n" * 30 +
+            "## Summary\n"
+            "We should update src/auth.py\n"
+            "Created tests/test_auth.py\n"
+            "filler\n" * 30
+        )
+        result = compact(text, limit=400)
+        assert "## Summary" in result
+        assert "src/auth.py" in result
+        assert "should update" in result or "Created" in result
+
+    def test_deduplicates_key_lines(self):
+        """Repeated lines should not appear multiple times."""
+        text = ("We should fix this\n" * 100)
+        result = compact(text, limit=400)
+        assert result.count("We should fix this") <= 2  # once in key lines, maybe once in fallback
+
+    def test_multiple_file_extensions(self):
+        """Extracts files with different extensions."""
+        text = (
+            "filler\n" * 30 +
+            "Modified app.tsx and config.yaml and main.rs\n" +
+            "filler\n" * 30
+        )
+        result = compact(text, limit=400)
+        assert "app.tsx" in result
+        assert "config.yaml" in result
+        assert "main.rs" in result
+
+    def test_exact_limit_boundary(self):
+        """Text exactly at limit passes through."""
+        text = "x" * 800
+        assert compact(text, limit=800) == text
+
+    def test_one_char_over_limit(self):
+        """Text one char over limit gets compacted."""
+        text = "x" * 801
+        result = compact(text, limit=800)
+        assert len(result) <= 800
+
+    def test_preserves_warning_lines(self):
+        text = (
+            "ok\n" * 50 +
+            "WARNING: deprecated function used in auth.py\n" +
+            "ok\n" * 50
+        )
+        result = compact(text, limit=300)
+        assert "WARNING" in result or "deprecated" in result
+
+    def test_mixed_structured_and_plain_text(self):
+        """Structured content is extracted; plain filler is discarded."""
+        text = (
+            "This is plain text without keywords\n" * 40 +
+            "## Important Section\n"
+            "We should migrate to the new API\n"
+            "Error: connection timeout in main.py\n" +
+            "This is plain text without keywords\n" * 40
+        )
+        result = compact(text, limit=400)
+        assert "## Important Section" in result
+        assert "should migrate" in result
+
+    def test_compact_always_returns_string(self):
+        """Return type is always str regardless of input."""
+        assert isinstance(compact("", limit=100), str)
+        assert isinstance(compact("short", limit=100), str)
+        assert isinstance(compact("x" * 5000, limit=100), str)
+
+    def test_plain_text_no_extraction_still_returns_content(self):
+        """Totally unstructured text still produces a non-empty result."""
+        text = "\n".join(f"line number {i} with boring content" for i in range(200))
+        result = compact(text, limit=300)
+        assert len(result) > 0
+        assert len(result) <= 300

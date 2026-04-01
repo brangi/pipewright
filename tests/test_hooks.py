@@ -97,3 +97,61 @@ class TestWorkflowHooks:
         ctx = HookContext(workflow_name=wf.name)
         wf.on_start(ctx)
         assert ctx.abort is True
+
+    def test_workflow_with_on_complete(self):
+        calls = []
+
+        class HookedWorkflow(Workflow):
+            name = "hooked"
+            description = "test"
+            steps = [Step(name="s1", prompt="{target}{context}")]
+            on_complete = staticmethod(
+                lambda ctx: calls.append(("done", ctx.cost_usd))
+            )
+
+        wf = HookedWorkflow()
+        ctx = HookContext(workflow_name=wf.name, cost_usd=0.05)
+        wf.on_complete(ctx)
+        assert calls == [("done", 0.05)]
+
+    def test_inject_context_in_hook(self):
+        def injector(ctx):
+            ctx.inject_context = "Extra context from hook"
+
+        class InjectWorkflow(Workflow):
+            name = "inject-test"
+            description = "test"
+            steps = [Step(name="s1", prompt="{target}{context}")]
+            on_step_complete = staticmethod(injector)
+
+        wf = InjectWorkflow()
+        ctx = HookContext(workflow_name=wf.name, step_name="s1")
+        wf.on_step_complete(ctx)
+        assert ctx.inject_context == "Extra context from hook"
+        assert ctx.abort is False
+
+    def test_workflow_with_all_three_hooks(self):
+        calls = []
+
+        class FullHookWorkflow(Workflow):
+            name = "full-hooks"
+            description = "test"
+            steps = [Step(name="s1", prompt="{target}{context}")]
+            on_start = staticmethod(lambda ctx: calls.append("start"))
+            on_step_complete = staticmethod(lambda ctx: calls.append("step"))
+            on_complete = staticmethod(lambda ctx: calls.append("done"))
+
+        wf = FullHookWorkflow()
+        ctx = HookContext(workflow_name=wf.name)
+        wf.on_start(ctx)
+        wf.on_step_complete(ctx)
+        wf.on_complete(ctx)
+        assert calls == ["start", "step", "done"]
+
+    def test_hook_context_target_and_context_fields(self):
+        ctx = HookContext(
+            workflow_name="wf", target="./src/auth.py",
+            context="Target: ./src/auth.py\n--- Result from 'analyze' ---\nfound issues\n",
+        )
+        assert ctx.target == "./src/auth.py"
+        assert "found issues" in ctx.context

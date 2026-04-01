@@ -31,7 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
 all = ["openai>=1.0"]
-dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "pytest-cov>=4.0"]
 
 [project.scripts]
 # This makes `pipewright` available as a CLI command after `pip install`
@@ -44,6 +44,22 @@ Issues = "https://github.com/brangi/pipewright/issues"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["pipewright"]
+omit = [
+    "src/pipewright/__init__.py",
+    "src/pipewright/memory/mcp_server.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 60
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

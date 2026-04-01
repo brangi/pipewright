@@ -43,3 +43,39 @@ def test_workflow_start_uses_dynamic_version(capsys):
         captured = capsys.readouterr()
         assert "v0.2.0" in captured.out
         assert "v0.1.0" not in captured.out
+
+
+def test_workflow_start_includes_workflow_name(capsys):
+    """Test workflow_start output contains the given workflow name."""
+    display.workflow_start("code-review", "Review code for issues")
+    captured = capsys.readouterr()
+    assert "code-review" in captured.out
+
+
+def test_result_box_empty_content(capsys):
+    """Test result_box handles empty string content without raising."""
+    display.result_box("Empty Result", "")
+    captured = capsys.readouterr()
+    assert "Empty Result" in captured.out
+
+
+def test_step_banner_includes_name_and_number(capsys):
+    """Test step_banner output includes the step name and step number."""
+    display.step_banner("analyze", 2, 5)
+    captured = capsys.readouterr()
+    assert "analyze" in captured.out
+    assert "2" in captured.out
+
+
+def test_error_contains_message(capsys):
+    """Test error output contains the provided message text."""
+    display.error("something went wrong")
+    captured = capsys.readouterr()
+    assert "something went wrong" in captured.out
+
+
+def test_success_contains_message(capsys):
+    """Test success output contains the provided message text."""
+    display.success("all tests passed")
+    captured = capsys.readouterr()
+    assert "all tests passed" in captured.out

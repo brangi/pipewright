@@ -87,3 +87,51 @@ class TestExistingPlugins:
         """Verify the 3 permission levels are properly ordered."""
         assert PERMISSION_TOOLS["read"] < PERMISSION_TOOLS["write"]
         assert PERMISSION_TOOLS["write"] < PERMISSION_TOOLS["full"]
+
+
+class TestPermissionEdgeCases:
+
+    def test_unknown_tool_infers_full(self):
+        """Unknown tools (not in any level) should infer 'full'."""
+        assert _infer_permission(["CustomTool"]) == "full"
+
+    def test_mixed_known_and_unknown_tools(self):
+        """A step with Read + unknown tool gets 'full'."""
+        assert _infer_permission(["Read", "MySpecialTool"]) == "full"
+
+    def test_write_cap_blocks_bash_step(self):
+        """max_permission=write should block a step needing Bash."""
+        step = Step(name="test", prompt="", tools=["Read", "Bash"])
+        err = _validate_permissions(step, max_permission="write")
+        assert err is not None
+        assert "full" in err
+
+    def test_read_cap_blocks_write_step(self):
+        """max_permission=read should block a step needing Write."""
+        step = Step(name="test", prompt="", tools=["Read", "Write"])
+        err = _validate_permissions(step, max_permission="read")
+        assert err is not None
+
+    def test_explicit_full_permission_with_read_tools(self):
+        """A step can declare full permission even with read-only tools."""
+        step = Step(name="test", prompt="", tools=["Read"], permission_level="full")
+        assert _validate_permissions(step, None) is None
+
+    def test_step_permission_level_field_defaults_to_none(self):
+        step = Step(name="test", prompt="")
+        assert step.permission_level is None
+
+    def test_step_permission_level_can_be_set(self):
+        step = Step(name="test", prompt="", permission_level="write")
+        assert step.permission_level == "write"
+
+    def test_each_plugin_step_tools_exist_in_permission_table(self):
+        """Every tool used in plugins should be in the permission table."""
+        all_known = PERMISSION_TOOLS["full"]
+        workflows = discover_plugins(Path("plugins"))
+        for wf_name, wf in workflows.items():
+            for step in wf.steps:
+                for tool in step.tools:
+                    assert tool in all_known, (
+                        f"{wf_name}/{step.name} uses unknown tool '{tool}'"
+                    )

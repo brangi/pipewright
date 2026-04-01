@@ -125,3 +125,74 @@ class TestResumeCommand:
             result = runner.invoke(main, ["resume"])
         assert s.id in result.output
         assert "test-gen" in result.output
+
+    def test_resume_nonexistent_session(self, tmp_path):
+        runner = CliRunner()
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            result = runner.invoke(main, ["resume", "nonexistent123"])
+        assert result.exit_code != 0
+        assert "not found" in result.output
+
+    def test_resume_completed_session(self, tmp_path):
+        runner = CliRunner()
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            s = create_session("test-gen", "./src", "groq", "haiku", 3)
+            s.mark_complete()
+            result = runner.invoke(main, ["resume", s.id])
+        assert result.exit_code != 0
+        assert "already completed" in result.output
+
+    def test_resume_listing_shows_step_progress(self, tmp_path):
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            s = create_session("test-gen", "./src", "groq", "haiku", 5)
+            s.current_step = 2
+            s.save()
+            runner = CliRunner()
+            result = runner.invoke(main, ["resume"])
+        assert "2/5" in result.output
+
+    def test_resume_listing_truncates_long_target(self, tmp_path):
+        long_target = "a" * 50
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            create_session("test-gen", long_target, "groq", "haiku", 3)
+            runner = CliRunner()
+            result = runner.invoke(main, ["resume"])
+        assert "..." in result.output
+
+
+class TestSessionEdgeCases:
+
+    def test_session_context_preserved_on_save(self, tmp_path):
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            s = create_session("test-gen", "./src", "groq", "haiku", 3)
+            s.context = "Target: ./src\n--- Result from 'analyze' ---\nfound issues\n"
+            s.current_step = 1
+            s.save()
+            loaded = Session.load(s.id)
+        assert "found issues" in loaded.context
+        assert loaded.current_step == 1
+
+    def test_session_timestamps_update_on_save(self, tmp_path):
+        import time
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            s = create_session("test-gen", "./src", "groq", "haiku", 3)
+            first_update = s.updated_at
+            time.sleep(0.05)
+            s.save()
+            assert s.updated_at > first_update
+
+    def test_session_provider_and_model_stored(self, tmp_path):
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path):
+            s = create_session("code-review", "HEAD~3..HEAD", "openrouter", "sonnet", 4)
+            loaded = Session.load(s.id)
+        assert loaded.provider == "openrouter"
+        assert loaded.model_alias == "sonnet"
+        assert loaded.total_steps == 4
+
+    def test_empty_sessions_dir(self, tmp_path):
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path / "nonexistent"):
+            assert Session.list_recent() == []
+
+    def test_cleanup_with_no_dir(self, tmp_path):
+        with patch("pipewright.session.SESSIONS_DIR", tmp_path / "nonexistent"):
+            Session.cleanup()  # should not raise
