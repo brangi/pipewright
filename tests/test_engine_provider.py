@@ -10,10 +10,9 @@ class TestEngineProviderDispatch:
     """Test that the engine correctly selects and validates providers."""
 
     def test_default_provider_is_anthropic(self):
-        """Config default is 'anthropic'."""
-        from pipewright import config as cfg
-        config = cfg.load()
-        assert config.get("provider", "anthropic") == "anthropic"
+        """Config defaults include anthropic as the default provider."""
+        from pipewright.config import DEFAULTS
+        assert DEFAULTS["provider"] == "anthropic"
 
     def test_anthropic_provider_instantiates(self):
         """Can instantiate the Anthropic provider."""
