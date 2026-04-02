@@ -37,13 +37,23 @@
 - [x] Structured output: `--format json` and `--output/-o` for JSON export
 - [x] `WorkflowResult` / `StepResult` dataclasses with `to_dict()` / `to_json()`
 
+## v0.4.0 (shipped April 1, 2026)
+
+- [x] Smart context compaction (replaces raw 1000-char truncation with heuristic extraction of file paths, headers, decisions, errors)
+- [x] Workflow hooks: `on_start`, `on_step_complete`, `on_complete` with abort and context injection
+- [x] Plugin permission levels: `read`, `write`, `full` with config cap (`max_permission`)
+- [x] Session persistence and `pipewright resume` command
+- [x] Coverage tooling (pytest-cov) and CI coverage reporting
+- [x] 412 tests passing, 65% coverage
+
 ## v1.0.0 — Production Ready
 
 Goal: Make pipewright stable, reliable, and ready for real-world use.
 
 ### Must Have
 
-- [ ] Workflow history and resume (`pipewright history`, `pipewright resume <run-id>`)
+- [x] Workflow resume (`pipewright resume` — shipped in v0.4.0)
+- [ ] Workflow history (`pipewright history` — browse past runs)
 - [ ] Per-project config (`.pipewright.json` in project root, merged with global)
 - [x] Rate limit retry with exponential backoff (429 handling in providers)
 - [ ] Dry-run mode (`--dry-run` — preview steps, tools, and estimated cost)

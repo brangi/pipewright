@@ -44,7 +44,8 @@ OpenAI, Groq, OpenRouter, and Ollama without any changes.
 | `checkpoint` | bool | no | False | Pause for user review before continuing |
 | `model` | str | no | None | Override the default model for this step |
 | `max_turns` | int | no | 15 | Maximum agent turns before stopping |
-| `context_limit` | int | no | 1000 | Max chars from this step's output carried forward |
+| `context_limit` | int | no | 800 | Max chars from this step's compacted output carried forward |
+| `permission_level` | str | no | None (inferred) | `"read"`, `"write"`, or `"full"` — restricts tool access |
 
 ## Prompt Templates
 
@@ -118,11 +119,32 @@ Use checkpoints before:
 
 In non-interactive mode (`-y` flag), checkpoints are auto-approved.
 
+## Permission Levels
+
+Steps can declare a `permission_level` to restrict which tools are available:
+
+| Level | Tools Allowed |
+|-------|---------------|
+| `read` | Read, Glob, Grep |
+| `write` | Read, Glob, Grep, Write, Edit |
+| `full` | Read, Glob, Grep, Write, Edit, Bash |
+
+If `permission_level` is not set, the engine infers it from the step's tool
+list. A global `max_permission` config cap can block steps that exceed it.
+
 ## Context Chaining
 
-Each step's output (truncated to `context_limit` chars) is appended to the
-`{context}` variable for the next step. This lets later steps build on earlier
-analysis without re-reading files.
+Each step's output is **smart-compacted** before being appended to the
+`{context}` variable for the next step. Instead of raw truncation, the engine
+extracts key information:
+
+- File paths mentioned in the output
+- Markdown headers and ALL CAPS section labels
+- Lines containing decision/action/error keywords
+- Head/tail fallback for unstructured content
+
+The result is capped at `context_limit` chars (default 800). This preserves
+the most useful information for downstream steps.
 
 Keep prompts focused so the accumulated context stays useful.
 
@@ -144,6 +166,44 @@ class MyWorkflow(Workflow):
 Chain modes:
 - `"target"` -- passes the last step's output as the target
 - `"context"` -- passes the full accumulated context as the target
+
+## Workflow Hooks
+
+Workflows can define lifecycle hooks for logging, cost tracking, validation,
+or context injection:
+
+```python
+from pipewright.workflow import Workflow, Step, HookContext
+
+class MyWorkflow(Workflow):
+    name = "my-workflow"
+    description = "Example with hooks"
+    steps = [...]
+
+    @staticmethod
+    def on_start(ctx: HookContext):
+        """Called before the first step runs."""
+        print(f"Starting {ctx.workflow_name} on {ctx.target}")
+
+    @staticmethod
+    def on_step_complete(ctx: HookContext):
+        """Called after each step finishes."""
+        if ctx.cost_usd and ctx.cost_usd > 0.50:
+            ctx.abort = True  # stop if too expensive
+
+    @staticmethod
+    def on_complete(ctx: HookContext):
+        """Called after all steps finish."""
+        print(f"Done! Total cost: ${ctx.cost_usd:.2f}")
+```
+
+`HookContext` fields: `workflow_name`, `step_name`, `step_number`,
+`total_steps`, `output_text`, `cost_usd`, `duration_seconds`, `context`,
+`target`.
+
+Hooks can:
+- Set `ctx.abort = True` to stop the workflow
+- Set `ctx.inject_context = "..."` to append extra information to the context
 
 ## Memory
 

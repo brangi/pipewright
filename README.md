@@ -97,6 +97,13 @@ pipewright run test-gen ./src/auth.py --format json
 pipewright run test-gen ./src/auth.py -o result.json -y
 ```
 
+Resume an interrupted workflow:
+
+```bash
+pipewright resume                       # list resumable sessions
+pipewright resume <session-id>          # pick up where you left off
+```
+
 ## Providers
 
 Pipewright supports multiple LLM providers. Use the `--provider` / `-p` flag to
@@ -222,8 +229,12 @@ Provider Layer
 ```
 
 Plugins define steps with prompt templates and tool lists. The engine resolves
-the provider, maps model aliases, and executes each step. Context chains from
-step to step. Checkpoints pause for human review.
+the provider, maps model aliases, and executes each step. Smart context
+compaction extracts key information (file paths, headers, decisions, errors)
+between steps instead of raw truncation. Checkpoints pause for human review.
+Workflow hooks (`on_start`, `on_step_complete`, `on_complete`) enable custom
+logic at each lifecycle stage. Sessions persist to disk, enabling resume after
+interruption.
 
 ## Project Structure
 
@@ -231,8 +242,10 @@ step to step. Checkpoints pause for human review.
 src/pipewright/
   cli.py              CLI entry point (Click)
   engine.py           Async orchestrator
-  workflow.py         Step, Chain, Workflow dataclasses
+  workflow.py         Step, Chain, Workflow, HookContext dataclasses
   config.py           JSON config (~/.pipewright/config.json)
+  context.py          Smart context compaction between steps
+  session.py          Session persistence and resume
   plugins/loader.py   Plugin discovery
   providers/          Provider abstraction layer
     base.py           Provider ABC

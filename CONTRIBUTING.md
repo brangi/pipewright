@@ -30,13 +30,17 @@ pipewright providers     # see available providers
 
 ```bash
 pytest tests/                     # full suite
-pytest tests/test_engine.py -v    # single file
+pytest tests/test_session.py -v   # single file
 pytest -q                         # quiet summary
+
+# With coverage report
+pytest tests/ --cov=pipewright --cov-report=term-missing
 ```
 
 All tests must pass before submitting a PR. The test suite includes:
 - Plugin structural tests (steps, prompts, tools)
-- Engine and CLI tests
+- Engine, CLI, and config tests
+- Context compaction, permissions, hooks, and session tests
 - Provider tests (types, registry, Anthropic, OpenAI-compat, tools)
 - License header enforcement (see below)
 

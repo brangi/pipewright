@@ -128,6 +128,25 @@ For CI or non-interactive use, pass `-y` to auto-approve all checkpoints:
 pipewright run test-gen ./src/utils.py -y
 ```
 
+### Session Resume
+
+Pipewright saves workflow state after each step. If a workflow is interrupted
+(network error, rate limit, Ctrl-C), you can resume it:
+
+```bash
+pipewright resume                       # list resumable sessions
+```
+
+This shows recent incomplete sessions with their workflow name, target, step
+progress (e.g., "2/5"), and session ID. Pick one to resume:
+
+```bash
+pipewright resume <session-id>          # resume from last completed step
+```
+
+Sessions are stored in `~/.pipewright/sessions/`. The system keeps the 10 most
+recent sessions and automatically cleans up older ones.
+
 ### Structured Output (JSON)
 
 Pipewright can export workflow results as structured JSON for integration with
