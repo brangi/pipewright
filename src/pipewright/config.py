@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 _global_env = Path.home() / ".pipewright" / ".env"
 if _global_env.exists():
     load_dotenv(_global_env)
-load_dotenv()  # CWD .env can override global
+load_dotenv(override=True)  # CWD .env can override global
 
 CONFIG_DIR = Path.home() / ".pipewright"
 CONFIG_FILE = CONFIG_DIR / "config.json"

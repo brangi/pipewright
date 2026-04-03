@@ -46,8 +46,8 @@ GROQ_ALIASES = {
 
 OPENROUTER_ALIASES = {
     "haiku": "stepfun/step-3.5-flash:free",
-    "sonnet": "nvidia/nemotron-3-super-120b:free",
-    "opus": "nvidia/nemotron-3-super-120b:free",
+    "sonnet": "nvidia/nemotron-3-super-120b-a12b:free",
+    "opus": "meta-llama/llama-3.3-70b-instruct:free",
 }
 
 

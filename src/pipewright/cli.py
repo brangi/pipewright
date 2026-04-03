@@ -56,7 +56,7 @@ def run(workflow: str, target: str, model: str | None, provider: str | None, yes
     # Check current directory first, then package location
     plugins_dir = pathlib.Path.cwd() / "plugins"
     if not plugins_dir.exists():
-        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+        plugins_dir = pathlib.Path(__file__).parent / "plugins"
 
     workflows = discover_plugins(plugins_dir)
 
@@ -86,7 +86,7 @@ def list_workflows():
     import pathlib
     plugins_dir = pathlib.Path.cwd() / "plugins"
     if not plugins_dir.exists():
-        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+        plugins_dir = pathlib.Path(__file__).parent / "plugins"
 
     workflows = discover_plugins(plugins_dir)
     if not workflows:
@@ -325,7 +325,7 @@ def ci_setup():
     # Discover workflows
     plugins_dir = pathlib.Path.cwd() / "plugins"
     if not plugins_dir.exists():
-        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+        plugins_dir = pathlib.Path(__file__).parent / "plugins"
 
     workflows = discover_plugins(plugins_dir)
     if not workflows:
@@ -427,7 +427,7 @@ def resume(session_id: str | None, provider: str | None, yes: bool):
 
     plugins_dir = pathlib.Path.cwd() / "plugins"
     if not plugins_dir.exists():
-        plugins_dir = pathlib.Path(__file__).parent.parent.parent.parent / "plugins"
+        plugins_dir = pathlib.Path(__file__).parent / "plugins"
 
     workflows = discover_plugins(plugins_dir)
     if session.workflow_name not in workflows:

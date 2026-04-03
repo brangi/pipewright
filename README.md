@@ -142,8 +142,8 @@ model for each provider:
 | Alias | Anthropic | OpenAI | Groq | OpenRouter | Ollama |
 |-------|-----------|--------|------|------------|--------|
 | haiku | claude-haiku-4-5 | gpt-4o-mini | qwen3-32b | step-3.5-flash:free | llama3.2:3b |
-| sonnet | claude-sonnet-4-5 | gpt-4o | qwen3-32b | nemotron-3-super-120b:free | llama3.3:70b |
-| opus | claude-opus-4-6 | gpt-4o | llama-3.3-70b | nemotron-3-super-120b:free | llama3.3:70b |
+| sonnet | claude-sonnet-4-5 | gpt-4o | qwen3-32b | nemotron-3-super-120b-a12b:free | llama3.3:70b |
+| opus | claude-opus-4-6 | gpt-4o | llama-3.3-70b | llama-3.3-70b-instruct:free | llama3.3:70b |
 
 This means plugins are **fully provider-agnostic** -- the same workflow runs
 on any provider without changes.
