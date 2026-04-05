@@ -15,7 +15,7 @@ from pathlib import Path
 from pipewright.config import CONFIG_DIR
 
 SESSIONS_DIR = CONFIG_DIR / "sessions"
-MAX_SESSIONS = 10
+MAX_SESSIONS = 50
 
 
 @dataclass
@@ -74,6 +74,32 @@ class Session:
         return sessions
 
     @staticmethod
+    def list_all(
+        workflow: str | None = None,
+        status: str = "all",
+        limit: int = 20,
+    ) -> list["Session"]:
+        """List sessions with optional filters, newest first."""
+        if not SESSIONS_DIR.exists():
+            return []
+        sessions = []
+        for path in sorted(SESSIONS_DIR.glob("*.json"),
+                           key=lambda p: p.stat().st_mtime, reverse=True):
+            s = Session.load(path.stem)
+            if s is None:
+                continue
+            if workflow and s.workflow_name != workflow:
+                continue
+            if status == "completed" and not s.completed:
+                continue
+            if status == "incomplete" and s.completed:
+                continue
+            sessions.append(s)
+            if len(sessions) >= limit:
+                break
+        return sessions
+
+    @staticmethod
     def cleanup():
         """Remove old sessions, keeping only the most recent MAX_SESSIONS."""
         if not SESSIONS_DIR.exists():
@@ -83,6 +109,17 @@ class Session:
         while len(files) > MAX_SESSIONS:
             files[0].unlink()
             files.pop(0)
+
+    @staticmethod
+    def clear_all() -> int:
+        """Remove all session files. Returns count deleted."""
+        if not SESSIONS_DIR.exists():
+            return 0
+        count = 0
+        for path in SESSIONS_DIR.glob("*.json"):
+            path.unlink()
+            count += 1
+        return count
 
 
 def create_session(workflow_name: str, target: str, provider: str,

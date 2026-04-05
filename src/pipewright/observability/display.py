@@ -107,3 +107,61 @@ def result_box(title: str, content: str):
     for line in lines:
         print(f"  {DIM}│{RESET}  {line}")
     print(f"  {BOLD}└{border}─┘{RESET}\n")
+
+
+def session_list_row(s) -> str:
+    """Format one session as a single-line list row."""
+    ts = datetime.fromtimestamp(s.updated_at).strftime("%Y-%m-%d %H:%M")
+    if s.completed:
+        status = f"{GREEN}completed{RESET}"
+    else:
+        status = f"{YELLOW}step {s.current_step}/{s.total_steps}{RESET}"
+    tgt = s.target[:30] + "..." if len(s.target) > 30 else s.target
+    return (
+        f"  {DIM}{s.id}{RESET}  {BOLD}{s.workflow_name:15s}{RESET} "
+        f"{status}  target={tgt}  {DIM}{ts}{RESET}"
+    )
+
+
+def session_detail(s) -> str:
+    """Format full session detail view."""
+    created = datetime.fromtimestamp(s.created_at).strftime("%Y-%m-%d %H:%M:%S")
+    updated = datetime.fromtimestamp(s.updated_at).strftime("%Y-%m-%d %H:%M:%S")
+    if s.completed:
+        status_str = f"{GREEN}Completed{RESET}"
+    else:
+        status_str = f"{YELLOW}In Progress ({s.current_step}/{s.total_steps}){RESET}"
+
+    lines = [
+        f"\n  {BOLD}Session {s.id}{RESET}",
+        f"  {'─' * 45}",
+        f"  Workflow:   {CYAN}{s.workflow_name}{RESET}",
+        f"  Target:     {s.target}",
+        f"  Provider:   {s.provider}",
+        f"  Model:      {s.model_alias}",
+        f"  Status:     {status_str}",
+        f"  Steps:      {s.current_step}/{s.total_steps}",
+        f"  Created:    {created}",
+        f"  Updated:    {updated}",
+    ]
+
+    if s.step_results:
+        lines.append(f"\n  {BOLD}Step Results:{RESET}")
+        total_cost = 0.0
+        total_duration = 0.0
+        for r in s.step_results:
+            skip_tag = f" {DIM}(skipped){RESET}" if r.get("skipped") else ""
+            cost = r.get("cost_usd") or 0
+            duration = r.get("duration_seconds") or 0
+            total_cost += cost
+            total_duration += duration
+            lines.append(
+                f"    {r.get('step_number', '?')}. {BOLD}{r.get('step_name', '?')}{RESET}"
+                f"  model={r.get('model', '?')}  "
+                f"${cost:.4f}  {duration:.1f}s  "
+                f"{r.get('num_turns', '?')} turns{skip_tag}"
+            )
+        lines.append(f"\n  {BOLD}Total:{RESET} ${total_cost:.4f}  {total_duration:.1f}s")
+
+    lines.append("")
+    return "\n".join(lines)

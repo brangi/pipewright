@@ -53,7 +53,7 @@ Goal: Make pipewright stable, reliable, and ready for real-world use.
 ### Must Have
 
 - [x] Workflow resume (`pipewright resume` — shipped in v0.4.0)
-- [ ] Workflow history (`pipewright history` — browse past runs)
+- [x] Workflow history (`pipewright history` — browse past runs)
 - [ ] Per-project config (`.pipewright.json` in project root, merged with global)
 - [x] Rate limit retry with exponential backoff (429 handling in providers)
 - [ ] Dry-run mode (`--dry-run` — preview steps, tools, and estimated cost)
