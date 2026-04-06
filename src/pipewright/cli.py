@@ -444,6 +444,83 @@ def resume(session_id: str | None, provider: str | None, yes: bool):
     )
 
 
+@main.command()
+@click.argument("session_id", required=False, default=None)
+@click.option("--workflow", "-w", default=None, help="Filter by workflow name")
+@click.option("--status", "-s", "status_filter", default="all",
+              type=click.Choice(["completed", "incomplete", "all"]),
+              help="Filter by status (default: all)")
+@click.option("--limit", "-l", default=20, help="Max sessions to show (default: 20)")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Output as JSON")
+def history(session_id: str | None, workflow: str | None, status_filter: str,
+            limit: int, as_json: bool):
+    """View workflow session history.
+
+    Without arguments, lists all sessions (newest first).
+    With a session ID, shows detailed view.
+    Use 'clear' as session_id to remove all history.
+
+    Examples:
+
+        pipewright history
+
+        pipewright history a1b2c3d4e5f6
+
+        pipewright history --workflow test-gen --status completed
+
+        pipewright history --json
+
+        pipewright history clear
+    """
+    import json as json_mod
+    from dataclasses import asdict
+    from pipewright.session import Session
+    from pipewright.observability.display import session_list_row, session_detail
+
+    # Handle "clear" subcommand
+    if session_id == "clear":
+        if not as_json:
+            if not click.confirm("Delete all session history?"):
+                click.echo("Cancelled.")
+                return
+        count = Session.clear_all()
+        if as_json:
+            click.echo(json_mod.dumps({"cleared": count}))
+        else:
+            click.echo(f"Cleared {count} session(s).")
+        return
+
+    # Detail view for specific session
+    if session_id is not None:
+        session = Session.load(session_id)
+        if not session:
+            click.echo(f"Session '{session_id}' not found.")
+            raise SystemExit(1)
+        if as_json:
+            click.echo(json_mod.dumps(asdict(session), indent=2))
+        else:
+            click.echo(session_detail(session))
+        return
+
+    # List view
+    sessions = Session.list_all(workflow=workflow, status=status_filter, limit=limit)
+    if not sessions:
+        if as_json:
+            click.echo("[]")
+        else:
+            click.echo("No sessions found.")
+        return
+
+    if as_json:
+        click.echo(json_mod.dumps([asdict(s) for s in sessions], indent=2))
+        return
+
+    click.echo(f"\nSession history ({len(sessions)} sessions):\n")
+    for s in sessions:
+        click.echo(session_list_row(s))
+    click.echo(f"\nDetail: pipewright history <session-id>")
+
+
 def _to_class_name(snake_name: str) -> str:
     """Convert snake_case to PascalCase. e.g. 'my_plugin' -> 'MyPlugin'."""
     return "".join(word.capitalize() for word in snake_name.split("_"))
