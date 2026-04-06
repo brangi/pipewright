@@ -3,8 +3,12 @@
 
 """Configuration management for Pipewright.
 
-Settings are stored in ~/.pipewright/config.json.
+Global settings are stored in ~/.pipewright/config.json.
+Per-project settings live in .pipewright.json (searched from cwd upward).
 API keys come from environment variables (never stored in config).
+
+Merge order: defaults → global config → project config.
+CLI flags and step-level overrides happen downstream in the engine.
 """
 import json
 import sys
@@ -20,6 +24,7 @@ load_dotenv(override=True)  # CWD .env can override global
 CONFIG_DIR = Path.home() / ".pipewright"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 MEMORY_DIR = CONFIG_DIR / "memory"
+PROJECT_CONFIG_NAME = ".pipewright.json"
 
 # Defaults applied when no config exists yet
 DEFAULTS = {
@@ -34,8 +39,42 @@ def _ensure_dirs():
     MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def load() -> dict:
-    """Load config, merging saved values over defaults."""
+def find_project_config(start_dir: Path | None = None) -> Path | None:
+    """Walk up from *start_dir* (default cwd) looking for .pipewright.json."""
+    current = (start_dir or Path.cwd()).resolve()
+    while True:
+        candidate = current / PROJECT_CONFIG_NAME
+        if candidate.is_file():
+            return candidate
+        parent = current.parent
+        if parent == current:  # filesystem root
+            return None
+        current = parent
+
+
+def load_project(start_dir: Path | None = None) -> dict:
+    """Load project-level config. Returns {} if not found or invalid."""
+    path = find_project_config(start_dir)
+    if path is None:
+        return {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            print(f"Warning: project config is not a JSON object ({path}), ignoring.",
+                  file=sys.stderr)
+            return {}
+        return data
+    except json.JSONDecodeError:
+        print(f"Warning: project config corrupted ({path}), ignoring.",
+              file=sys.stderr)
+        return {}
+    except IOError:
+        return {}
+
+
+def load(project_dir: Path | None = None) -> dict:
+    """Load config, merging defaults → global → project."""
     _ensure_dirs()
     if CONFIG_FILE.exists():
         try:
@@ -49,7 +88,8 @@ def load() -> dict:
             saved = {}
     else:
         saved = {}
-    return {**DEFAULTS, **saved}
+    project = load_project(project_dir)
+    return {**DEFAULTS, **saved, **project}
 
 
 def save(cfg: dict):
