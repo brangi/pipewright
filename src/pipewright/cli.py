@@ -140,6 +140,34 @@ def config_get(key: str):
     click.echo(f"{key} = {val}")
 
 
+@config.command("init")
+@click.option("--force", is_flag=True, default=False, help="Overwrite existing file")
+def config_init(force: bool):
+    """Create a .pipewright.json project config in the current directory.
+
+    Example:
+
+        pipewright config init
+    """
+    import pathlib
+    import json as json_mod
+
+    target = pathlib.Path.cwd() / cfg.PROJECT_CONFIG_NAME
+    if target.exists() and not force:
+        click.echo(f"Already exists: {target}")
+        click.echo("Use --force to overwrite.")
+        raise SystemExit(1)
+
+    scaffold = {
+        "model": "haiku",
+        "provider": "anthropic",
+        "max_budget_usd": 0.50,
+    }
+    target.write_text(json_mod.dumps(scaffold, indent=2) + "\n")
+    click.echo(f"Created {target}")
+    click.echo("Edit it to set project-specific defaults.")
+
+
 @main.group()
 def memory():
     """Interact with pipewright's persistent memory."""
